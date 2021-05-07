@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -78,10 +78,20 @@ public:
   DistributedMesh(DistributedMesh &&) = delete;
 
   /**
-   * Copy and move assignment are not allowed.
+   * Copy assignment is not allowed.
    */
   DistributedMesh & operator= (const DistributedMesh &) = delete;
-  DistributedMesh & operator= (DistributedMesh &&) = delete;
+
+  /**
+   * Overloaded operator= will move contents of other_mesh to calling
+   * DistributedMesh object.
+   */
+  DistributedMesh & operator= (DistributedMesh && other_mesh);
+
+  /**
+   * Shim to call the move assignment operator for this class
+  */
+  virtual MeshBase & assign(MeshBase && other_mesh) override;
 
   /**
    * Virtual copy-constructor, creates a copy of this mesh
@@ -459,6 +469,15 @@ public:
   virtual SimpleRange<const_element_iterator> active_subdomain_set_elements_ptr_range(std::set<subdomain_id_type> ss) const override
   { return {active_subdomain_set_elements_begin(ss), active_subdomain_set_elements_end(ss)}; }
 
+  virtual element_iterator active_local_subdomain_set_elements_begin (std::set<subdomain_id_type> ss) override;
+  virtual element_iterator active_local_subdomain_set_elements_end (std::set<subdomain_id_type> ss) override;
+  virtual const_element_iterator active_local_subdomain_set_elements_begin (std::set<subdomain_id_type> ss) const override;
+  virtual const_element_iterator active_local_subdomain_set_elements_end (std::set<subdomain_id_type> ss) const override;
+  virtual SimpleRange<element_iterator> active_local_subdomain_set_elements_ptr_range(std::set<subdomain_id_type> ss) override
+  { return {active_local_subdomain_set_elements_begin(ss), active_local_subdomain_set_elements_end(ss)}; }
+  virtual SimpleRange<const_element_iterator> active_local_subdomain_set_elements_ptr_range(std::set<subdomain_id_type> ss) const override
+  { return {active_local_subdomain_set_elements_begin(ss), active_local_subdomain_set_elements_end(ss)}; }
+
   virtual element_iterator ghost_elements_begin () override;
   virtual element_iterator ghost_elements_end () override;
   virtual const_element_iterator ghost_elements_begin () const override;
@@ -548,6 +567,11 @@ public:
 
 
 protected:
+
+  /**
+   * Move node and elements from a DistributedMesh.
+   */
+  virtual void move_nodes_and_elements(MeshBase && other_mesh) override;
 
   /**
    * The vertices (spatial coordinates) of the mesh.

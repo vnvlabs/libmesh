@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -17,7 +17,7 @@
 
 
 
-// Local includes
+// libmesh includes
 #include "libmesh/mesh_generation.h"
 #include "libmesh/unstructured_mesh.h"
 #include "libmesh/mesh_refinement.h"
@@ -50,6 +50,7 @@
 #include "libmesh/int_range.h"
 #include "libmesh/parallel.h"
 #include "libmesh/parallel_ghost_sync.h"
+#include "libmesh/enum_to_string.h"
 
 // C++ includes
 #include <cstdlib> // *must* precede <cmath> for proper std:abs() on PGI, Sun Studio CC
@@ -93,7 +94,7 @@ unsigned int idx(const ElemType type,
       }
 
     default:
-      libmesh_error_msg("ERROR: Unrecognized 2D element type.");
+      libmesh_error_msg("ERROR: Unrecognized 2D element type == " << Utility::enum_to_string(type));
     }
 
   return libMesh::invalid_uint;
@@ -133,7 +134,7 @@ unsigned int idx(const ElemType type,
       }
 
     default:
-      libmesh_error_msg("ERROR: Unrecognized element type.");
+      libmesh_error_msg("ERROR: Unrecognized element type == " << Utility::enum_to_string(type));
     }
 
   return libMesh::invalid_uint;
@@ -389,7 +390,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
             }
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 1D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 1D element type == " << Utility::enum_to_string(type));
           }
 
         // Reserve nodes
@@ -415,7 +416,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
             }
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 1D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 1D element type == " << Utility::enum_to_string(type));
           }
 
 
@@ -428,7 +429,13 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
           case EDGE2:
             {
               for (unsigned int i=0; i<=nx; i++)
-                mesh.add_point (Point(static_cast<Real>(i)/nx, 0, 0), node_id++);
+              {
+                const Node * const node = mesh.add_point (Point(static_cast<Real>(i)/nx, 0, 0), node_id++);
+                if (i == 0)
+                  boundary_info.add_node(node, 0);
+                if (i == nx)
+                  boundary_info.add_node(node, 1);
+              }
 
               break;
             }
@@ -436,20 +443,32 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
           case EDGE3:
             {
               for (unsigned int i=0; i<=2*nx; i++)
-                mesh.add_point (Point(static_cast<Real>(i)/(2*nx), 0, 0), node_id++);
+              {
+                const Node * const node = mesh.add_point (Point(static_cast<Real>(i)/(2*nx), 0, 0), node_id++);
+                if (i == 0)
+                  boundary_info.add_node(node, 0);
+                if (i == 2*nx)
+                  boundary_info.add_node(node, 1);
+              }
               break;
             }
 
           case EDGE4:
             {
               for (unsigned int i=0; i<=3*nx; i++)
-                mesh.add_point (Point(static_cast<Real>(i)/(3*nx), 0, 0), node_id++);
+              {
+                const Node * const node = mesh.add_point (Point(static_cast<Real>(i)/(3*nx), 0, 0), node_id++);
+                if (i == 0)
+                  boundary_info.add_node(node, 0);
+                if (i == 3*nx)
+                  boundary_info.add_node(node, 1);
+              }
 
               break;
             }
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 1D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 1D element type == " << Utility::enum_to_string(type));
 
           }
 
@@ -513,7 +532,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
             }
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 1D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 1D element type == " << Utility::enum_to_string(type));
           }
 
         // Move the nodes to their final locations.
@@ -579,7 +598,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
             }
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 2D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 2D element type == " << Utility::enum_to_string(type));
           }
 
 
@@ -606,7 +625,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
 
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 2D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 2D element type == " << Utility::enum_to_string(type));
           }
 
 
@@ -623,9 +642,21 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
             {
               for (unsigned int j=0; j<=ny; j++)
                 for (unsigned int i=0; i<=nx; i++)
-                  mesh.add_point (Point(static_cast<Real>(i)/static_cast<Real>(nx),
-                                        static_cast<Real>(j)/static_cast<Real>(ny),
-                                        0.), node_id++);
+                {
+                  const Node * const node =
+                      mesh.add_point(Point(static_cast<Real>(i) / static_cast<Real>(nx),
+                                           static_cast<Real>(j) / static_cast<Real>(ny),
+                                           0.),
+                                     node_id++);
+                  if (j == 0)
+                    boundary_info.add_node(node, 0);
+                  if (j == ny)
+                    boundary_info.add_node(node, 2);
+                  if (i == 0)
+                    boundary_info.add_node(node, 3);
+                  if (i == nx)
+                    boundary_info.add_node(node, 1);
+                }
 
               break;
             }
@@ -636,16 +667,28 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
             {
               for (unsigned int j=0; j<=(2*ny); j++)
                 for (unsigned int i=0; i<=(2*nx); i++)
-                  mesh.add_point (Point(static_cast<Real>(i)/static_cast<Real>(2*nx),
-                                        static_cast<Real>(j)/static_cast<Real>(2*ny),
-                                        0), node_id++);
+                {
+                  const Node * const node =
+                      mesh.add_point(Point(static_cast<Real>(i) / static_cast<Real>(2 * nx),
+                                           static_cast<Real>(j) / static_cast<Real>(2 * ny),
+                                           0),
+                                     node_id++);
+                  if (j == 0)
+                    boundary_info.add_node(node, 0);
+                  if (j == 2*ny)
+                    boundary_info.add_node(node, 2);
+                  if (i == 0)
+                    boundary_info.add_node(node, 3);
+                  if (i == 2*nx)
+                    boundary_info.add_node(node, 1);
+                }
 
               break;
             }
 
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 2D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 2D element type == " << Utility::enum_to_string(type));
           }
 
 
@@ -795,7 +838,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
 
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 2D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 2D element type == " << Utility::enum_to_string(type));
           }
 
 
@@ -881,7 +924,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
             }
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 3D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 3D element type == " << Utility::enum_to_string(type));
           }
 
 
@@ -918,7 +961,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
             }
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 3D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 3D element type == " << Utility::enum_to_string(type));
           }
 
 
@@ -935,9 +978,25 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
               for (unsigned int k=0; k<=nz; k++)
                 for (unsigned int j=0; j<=ny; j++)
                   for (unsigned int i=0; i<=nx; i++)
-                    mesh.add_point(Point(static_cast<Real>(i)/static_cast<Real>(nx),
-                                         static_cast<Real>(j)/static_cast<Real>(ny),
-                                         static_cast<Real>(k)/static_cast<Real>(nz)), node_id++);
+                  {
+                    const Node * const node =
+                        mesh.add_point(Point(static_cast<Real>(i) / static_cast<Real>(nx),
+                                             static_cast<Real>(j) / static_cast<Real>(ny),
+                                             static_cast<Real>(k) / static_cast<Real>(nz)),
+                                       node_id++);
+                    if (k == 0)
+                      boundary_info.add_node(node, 0);
+                    if (k == nz)
+                      boundary_info.add_node(node, 5);
+                    if (j == 0)
+                      boundary_info.add_node(node, 1);
+                    if (j == ny)
+                      boundary_info.add_node(node, 3);
+                    if (i == 0)
+                      boundary_info.add_node(node, 4);
+                    if (i == nx)
+                      boundary_info.add_node(node, 2);
+                  }
 
               break;
             }
@@ -955,16 +1014,32 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
               for (unsigned int k=0; k<=(2*nz); k++)
                 for (unsigned int j=0; j<=(2*ny); j++)
                   for (unsigned int i=0; i<=(2*nx); i++)
-                    mesh.add_point(Point(static_cast<Real>(i)/static_cast<Real>(2*nx),
-                                         static_cast<Real>(j)/static_cast<Real>(2*ny),
-                                         static_cast<Real>(k)/static_cast<Real>(2*nz)), node_id++);
+                  {
+                    const Node * const node =
+                        mesh.add_point(Point(static_cast<Real>(i) / static_cast<Real>(2 * nx),
+                                             static_cast<Real>(j) / static_cast<Real>(2 * ny),
+                                             static_cast<Real>(k) / static_cast<Real>(2 * nz)),
+                                       node_id++);
+                    if (k == 0)
+                      boundary_info.add_node(node, 0);
+                    if (k == 2*nz)
+                      boundary_info.add_node(node, 5);
+                    if (j == 0)
+                      boundary_info.add_node(node, 1);
+                    if (j == 2*ny)
+                      boundary_info.add_node(node, 3);
+                    if (i == 0)
+                      boundary_info.add_node(node, 4);
+                    if (i == 2*nx)
+                      boundary_info.add_node(node, 2);
+                  }
 
               break;
             }
 
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 3D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 3D element type == " << Utility::enum_to_string(type));
           }
 
 
@@ -1238,7 +1313,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
 
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 3D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 3D element type == " << Utility::enum_to_string(type));
           }
 
 

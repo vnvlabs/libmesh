@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -470,5 +470,25 @@ const unsigned short int Tri6::_second_order_vertex_child_index[Tri6::num_nodes]
     99,99,99, // Vertices
     1,2,2     // Edges
   };
+
+
+void Tri6::permute(unsigned int perm_num)
+{
+  libmesh_assert_less (perm_num, 3);
+
+  for (unsigned int i = 0; i != perm_num; ++i)
+    {
+      swap3nodes(0,1,2);
+      swap3nodes(3,4,5);
+    }
+}
+
+
+unsigned int Tri6::center_node_on_side(const unsigned short side) const
+{
+  libmesh_assert_less (side, Tri6::num_sides);
+  return side + 3;
+}
+
 
 } // namespace libMesh

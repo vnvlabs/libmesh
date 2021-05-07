@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -64,6 +64,7 @@
 #include "libmesh/cell_pyramid14.h"
 #include "libmesh/fe_base.h"
 #include "libmesh/mesh_base.h"
+#include "libmesh/quadrature_nodal.h"
 #include "libmesh/quadrature_gauss.h"
 #include "libmesh/remote_elem.h"
 #include "libmesh/reference_elem.h"
@@ -329,7 +330,7 @@ std::unique_ptr<Elem> Elem::build(const ElemType type,
 #endif
 
     default:
-      libmesh_error_msg("ERROR: Undefined element type!");
+      libmesh_error_msg("ERROR: Undefined element type == " << Utility::enum_to_string(type));
     }
 }
 
@@ -1664,14 +1665,14 @@ void Elem::active_family_tree_by_topological_neighbor (std::vector<Elem *> & fam
 }
 
 
-bool Elem::is_child_on_edge(const unsigned int libmesh_dbg_var(c),
+bool Elem::is_child_on_edge(const unsigned int c,
                             const unsigned int e) const
 {
   libmesh_assert_less (c, this->n_children());
   libmesh_assert_less (e, this->n_edges());
 
   std::unique_ptr<const Elem> my_edge = this->build_edge_ptr(e);
-  std::unique_ptr<const Elem> child_edge = this->build_edge_ptr(e);
+  std::unique_ptr<const Elem> child_edge = this->child_ptr(c)->build_edge_ptr(e);
 
   // We're assuming that an overlapping child edge has the same
   // number and orientation as its parent
@@ -2241,6 +2242,37 @@ bool Elem::point_test(const Point & p, Real box_tol, Real map_tol) const
 
 
 
+bool Elem::has_invertible_map(Real /*tol*/) const
+{
+  QNodal qnodal {this->dim()};
+  FEMap fe_map;
+  auto & jac = fe_map.get_jacobian();
+
+  qnodal.init(this->type());
+  auto & qp = qnodal.get_points();
+  libmesh_assert_equal_to(qp.size(), this->n_nodes());
+
+  std::vector<Point> one_point(1);
+  std::vector<Real> one_weight(1,1);
+  for (auto i : index_range(qp))
+    {
+      if (this->is_singular_node(i))
+        continue;
+
+      one_point[0] = qp[i];
+
+      fe_map.init_reference_to_physical_map(this->dim(), one_point, this);
+      fe_map.compute_map(this->dim(), one_weight, this, false);
+
+      if (jac[0] <= 0)
+        return false;
+    }
+
+  return true;
+}
+
+
+
 void Elem::print_info (std::ostream & os) const
 {
   os << this->get_info()
@@ -2725,5 +2757,13 @@ unsigned int Elem::opposite_node(const unsigned int /*n*/,
   // If the subclass didn't rederive this, using it is an error
   libmesh_not_implemented();
 }
+
+
+unsigned int Elem::center_node_on_side(const unsigned short libmesh_dbg_var(side)) const
+{
+  libmesh_assert_less (side, this->n_sides());
+  return invalid_uint;
+}
+
 
 } // namespace libMesh

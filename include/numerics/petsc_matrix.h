@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -241,8 +241,10 @@ public:
 
   /**
    * Compute Y = A*X for matrix \p X.
+   * Set reuse = true if this->_mat and X have the same nonzero pattern as before,
+   * and Y is obtained from a previous call to this function with reuse = false
    */
-  virtual void matrix_matrix_mult (SparseMatrix<T> & X, SparseMatrix<T> & Y) override;
+  virtual void matrix_matrix_mult (SparseMatrix<T> & X, SparseMatrix<T> & Y, bool reuse = false) override;
 
   /**
     * Add \p scalar* \p spm to the rows and cols of this matrix (A):
@@ -301,6 +303,18 @@ public:
   void get_row(numeric_index_type i,
                std::vector<numeric_index_type> & indices,
                std::vector<T> & values) const override;
+
+  /**
+   * Similar to the `create_submatrix` function, this function creates a \p
+   * submatrix which is defined by the indices given in the \p rows
+   * and \p cols vectors.
+   * Note: Both \p rows and \p cols can be unsorted;
+   *       Use the above function for better efficiency if your indices are sorted;
+   *       \p rows and \p cols can contain indices that are owned by other processors.
+   */
+   virtual void create_submatrix_nosort(SparseMatrix<T> & submatrix,
+                                        const std::vector<numeric_index_type> & rows,
+                                        const std::vector<numeric_index_type> & cols) const override;
 protected:
 
   /**
@@ -317,7 +331,6 @@ protected:
                               const std::vector<numeric_index_type> & rows,
                               const std::vector<numeric_index_type> & cols,
                               const bool reuse_submatrix) const override;
-
 private:
 
   /**

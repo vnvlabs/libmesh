@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -30,6 +30,7 @@
 #include "libmesh/partitioner.h"
 #include "libmesh/enum_order.h"
 #include "libmesh/mesh_communication.h"
+#include "libmesh/enum_to_string.h"
 
 // C++ includes
 #include <fstream>
@@ -1152,7 +1153,7 @@ void UnstructuredMesh::all_second_order (const bool full_ordered)
     {
       // make sure it is linear order
       libmesh_error_msg_if(lo_elem->default_order() != FIRST,
-                           "ERROR: This is not a linear element: type=" << lo_elem->type());
+                           "ERROR: This is not a linear element: type=" << Utility::enum_to_string(lo_elem->type()));
 
       // this does _not_ work for refined elements
       libmesh_assert_equal_to (lo_elem->level (), 0);

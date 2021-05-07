@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -81,8 +81,6 @@ void nedelec_one_nodal_soln(const Elem * elem,
             {
               libmesh_assert_equal_to (elem_soln.size(), 6);
               libmesh_assert_equal_to (nodal_soln.size(), 10*3);
-
-              libmesh_not_implemented();
 
               break;
             }

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -134,7 +134,7 @@ public:
    * \note The \p std::unique_ptr<Elem> takes care of freeing memory.
    */
   virtual std::unique_ptr<Elem> build_side_ptr (const unsigned int i,
-                                                bool proxy=true) override;
+                                                bool proxy=false) override;
 
   /**
    * Rebuilds a \p TRI3 built coincident with face 0, or an \p INFQUAD4
@@ -150,6 +150,12 @@ public:
    * \note that the \p std::unique_ptr<Elem> takes care of freeing memory.
    */
   virtual std::unique_ptr<Elem> build_edge_ptr (const unsigned int i) override;
+
+  /**
+   * Rebuilds a \p EDGE3 built coincident with edges 0 to 2, or \p
+   * INFEDGE2 built coincident with edges 3 to 5.
+   */
+  virtual void build_edge_ptr (std::unique_ptr<Elem> & edge, const unsigned int i) override;
 
   virtual void connectivity(const unsigned int sc,
                             const IOPackage iop,
@@ -182,6 +188,7 @@ public:
    */
   static const unsigned int edge_sides_map[num_edges][2];
 
+  virtual void permute(unsigned int perm_num) override final;
 
 protected:
 

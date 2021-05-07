@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -491,5 +491,25 @@ Quad8::second_order_child_vertex (const unsigned int n) const
     (_second_order_vertex_child_number[n],
      _second_order_vertex_child_index[n]);
 }
+
+
+void Quad8::permute(unsigned int perm_num)
+{
+  libmesh_assert_less (perm_num, 4);
+
+  for (unsigned int i = 0; i != perm_num; ++i)
+    {
+      swap4nodes(0,1,2,3);
+      swap4nodes(4,5,6,7);
+    }
+}
+
+
+unsigned int Quad8::center_node_on_side(const unsigned short side) const
+{
+  libmesh_assert_less (side, Quad8::num_sides);
+  return side + 4;
+}
+
 
 } // namespace libMesh

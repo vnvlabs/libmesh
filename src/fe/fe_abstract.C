@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -15,14 +15,10 @@
 // License along with this library; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-
-
-// Local includes
+// libmesh includes
 #include "libmesh/fe.h"
 #include "libmesh/libmesh_logging.h"
 #include "libmesh/enum_elem_type.h"
-
-// For projection code:
 #include "libmesh/boundary_info.h"
 #include "libmesh/mesh_base.h"
 #include "libmesh/dense_matrix.h"
@@ -39,6 +35,7 @@
 #include "libmesh/tensor_value.h"
 #include "libmesh/threads.h"
 #include "libmesh/enum_elem_type.h"
+#include "libmesh/enum_to_string.h"
 
 namespace libMesh
 {
@@ -49,6 +46,7 @@ FEAbstract::FEAbstract(const unsigned int d,
   dim(d),
   calculations_started(false),
   calculate_dual(false),
+  calculate_dual_coeff(true),
   calculate_nothing(false),
   calculate_map(false),
   calculate_phi(false),
@@ -102,6 +100,9 @@ std::unique_ptr<FEAbstract> FEAbstract::build(const unsigned int dim,
           case L2_HIERARCHIC:
             return libmesh_make_unique<FE<0,L2_HIERARCHIC>>(fet);
 
+          case SIDE_HIERARCHIC:
+            return libmesh_make_unique<FE<0,SIDE_HIERARCHIC>>(fet);
+
           case MONOMIAL:
             return libmesh_make_unique<FE<0,MONOMIAL>>(fet);
 
@@ -126,7 +127,7 @@ std::unique_ptr<FEAbstract> FEAbstract::build(const unsigned int dim,
             return libmesh_make_unique<FEScalar<0>>(fet);
 
           default:
-            libmesh_error_msg("ERROR: Bad FEType.family= " << fet.family);
+            libmesh_error_msg("ERROR: Bad FEType.family= " << Utility::enum_to_string(fet.family));
           }
       }
       // 1D
@@ -155,6 +156,9 @@ std::unique_ptr<FEAbstract> FEAbstract::build(const unsigned int dim,
           case L2_HIERARCHIC:
             return libmesh_make_unique<FE<1,L2_HIERARCHIC>>(fet);
 
+          case SIDE_HIERARCHIC:
+            return libmesh_make_unique<FE<1,SIDE_HIERARCHIC>>(fet);
+
           case MONOMIAL:
             return libmesh_make_unique<FE<1,MONOMIAL>>(fet);
 
@@ -179,7 +183,7 @@ std::unique_ptr<FEAbstract> FEAbstract::build(const unsigned int dim,
             return libmesh_make_unique<FEScalar<1>>(fet);
 
           default:
-            libmesh_error_msg("ERROR: Bad FEType.family= " << fet.family);
+            libmesh_error_msg("ERROR: Bad FEType.family= " << Utility::enum_to_string(fet.family));
           }
       }
 
@@ -209,6 +213,9 @@ std::unique_ptr<FEAbstract> FEAbstract::build(const unsigned int dim,
 
           case L2_HIERARCHIC:
             return libmesh_make_unique<FE<2,L2_HIERARCHIC>>(fet);
+
+          case SIDE_HIERARCHIC:
+            return libmesh_make_unique<FE<2,SIDE_HIERARCHIC>>(fet);
 
           case MONOMIAL:
             return libmesh_make_unique<FE<2,MONOMIAL>>(fet);
@@ -240,7 +247,7 @@ std::unique_ptr<FEAbstract> FEAbstract::build(const unsigned int dim,
             return libmesh_make_unique<FESubdivision>(fet);
 
           default:
-            libmesh_error_msg("ERROR: Bad FEType.family= " << fet.family);
+            libmesh_error_msg("ERROR: Bad FEType.family= " << Utility::enum_to_string(fet.family));
           }
       }
 
@@ -271,6 +278,9 @@ std::unique_ptr<FEAbstract> FEAbstract::build(const unsigned int dim,
           case L2_HIERARCHIC:
             return libmesh_make_unique<FE<3,L2_HIERARCHIC>>(fet);
 
+          case SIDE_HIERARCHIC:
+            return libmesh_make_unique<FE<3,SIDE_HIERARCHIC>>(fet);
+
           case MONOMIAL:
             return libmesh_make_unique<FE<3,MONOMIAL>>(fet);
 
@@ -298,7 +308,7 @@ std::unique_ptr<FEAbstract> FEAbstract::build(const unsigned int dim,
             return libmesh_make_unique<FENedelecOne<3>>(fet);
 
           default:
-            libmesh_error_msg("ERROR: Bad FEType.family= " << fet.family);
+            libmesh_error_msg("ERROR: Bad FEType.family= " << Utility::enum_to_string(fet.family));
           }
       }
 
@@ -616,7 +626,7 @@ void FEAbstract::get_refspace_nodes(const ElemType itemType, std::vector<Point> 
       }
 
     default:
-      libmesh_error_msg("ERROR: Unknown element type " << itemType);
+      libmesh_error_msg("ERROR: Unknown element type " << Utility::enum_to_string(itemType));
     }
 }
 
@@ -808,7 +818,7 @@ bool FEAbstract::on_reference_element(const Point & p, const ElemType t, const R
 #endif
 
     default:
-      libmesh_error_msg("ERROR: Unknown element type " << t);
+      libmesh_error_msg("ERROR: Unknown element type " << Utility::enum_to_string(t));
     }
 
   // If we get here then the point is _not_ in the

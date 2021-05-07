@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -16,15 +16,18 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-// Local includes
 #include "libmesh/libmesh_config.h"
+
 #ifdef LIBMESH_ENABLE_INFINITE_ELEMENTS
+
+// libmesh includes
 #include "libmesh/inf_fe.h"
 #include "libmesh/inf_fe_macro.h"
 #include "libmesh/fe.h"
 #include "libmesh/fe_interface.h"
 #include "libmesh/fe_compute_data.h"
 #include "libmesh/elem.h"
+#include "libmesh/enum_to_string.h"
 
 namespace libMesh
 {
@@ -522,9 +525,8 @@ void InfFE<Dim,T_radial,T_map>::compute_data(const FEType & fet,
           // compute the reference->physical map at the point \p p.
           // Use another fe_map to avoid interference with \p this->_fe_map
           // which is initialized at the quadrature points...
-          UniquePtr<FEBase> fe (FEBase::build_InfFE(Dim, fet));
-          std::vector<Point> pt(1);
-          pt[0]=p;
+          auto fe = FEBase::build_InfFE(Dim, fet);
+          std::vector<Point> pt = {p};
           fe->get_dphideta(); // to compute the map
           fe->reinit(inf_elem, &pt);
 
@@ -816,7 +818,7 @@ void InfFE<Dim,T_radial,T_map>::compute_node_indices (const ElemType inf_elem_ty
 
 
     default:
-      libmesh_error_msg("ERROR: Bad infinite element type=" << inf_elem_type << ", node=" << outer_node_index);
+      libmesh_error_msg("ERROR: Bad infinite element type=" << Utility::enum_to_string(inf_elem_type) << ", node=" << outer_node_index);
     }
 }
 
@@ -909,7 +911,7 @@ void InfFE<Dim,T_radial,T_map>::compute_node_indices_fast (const ElemType inf_el
             break;
           }
         default:
-          libmesh_error_msg("ERROR: Bad infinite element type=" << inf_elem_type << ", node=" << outer_node_index);
+          libmesh_error_msg("ERROR: Bad infinite element type=" << Utility::enum_to_string(inf_elem_type) << ", node=" << outer_node_index);
         }
 
 
@@ -1087,7 +1089,7 @@ void InfFE<Dim,T_radial,T_map>::compute_shape_indices (const FEType & fet,
       }
 
     default:
-      libmesh_error_msg("Unrecognized inf_elem_type = " << inf_elem_type);
+      libmesh_error_msg("Unrecognized inf_elem_type = " << Utility::enum_to_string(inf_elem_type));
     }
 
 

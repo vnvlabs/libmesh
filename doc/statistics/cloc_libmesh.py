@@ -246,6 +246,12 @@ data = [
     '2020-09-04', 906, 198749, # 1630a53b
     '2020-10-04', 907, 199497, # e9c15910
     '2020-11-04', 909, 200385, # 4825db9c
+    '2020-12-04', 909, 200392, # 7a6d338b
+# 2021
+    '2021-01-04', 909, 200705, # 3b410bcf
+    '2021-02-04', 911, 201006, # 0c89409c
+    '2021-03-04', 913, 201897, # d95eef7b
+    '2021-04-04', 913, 202506, # 5298bf63
 ]
 
 # Extract the dates from the data array
@@ -269,12 +275,30 @@ fig = plt.figure()
 # The colors used come from sns.color_palette("muted").as_hex(). They
 # are the "same basic order of hues as the default matplotlib color
 # cycle but more attractive colors."
+# We use the twinx() command to add a second y-axis
 ax1 = fig.add_subplot(111)
+ax2 = ax1.twinx()
+
+# We use the grid lines from the second axis (lines of code) as I think
+# that is generally of more interest than number of files. I ran into
+# an issue using axis='both', but turning on the x-grid on ax1 and the
+# y-grid on ax2 seems to do the trick.
+
+# According to this SO, we can force the grid lines to be displayed "below"
+# the data using these flags, but this did not work for me.
+# https://stackoverflow.com/questions/1726391/matplotlib-draw-grid-lines-behind-other-graph-elements
+ax1.set_axisbelow(True)
+ax2.set_axisbelow(True)
+
+ax1.grid(b=True, axis='x', color='lightgray', linestyle='--', linewidth=1, alpha=0.25)
+ax2.grid(b=True, axis='y', color='lightgray', linestyle='--', linewidth=1, alpha=0.25)
+
+# Plot number of files vs. time
 ax1.plot(date_nums, n_files, color=u'#4878cf', marker='o', linestyle='-', markersize=4, markevery=5)
 ax1.set_ylabel('Files (blue circles)')
 
 # Set up x-tick locations
-ticks_names = ['2003', '2005', '2007', '2009', '2011', '2013', '2015', '2017', '2019']
+ticks_names = ['2003', '2005', '2007', '2009', '2011', '2013', '2015', '2017', '2019', '2021']
 
 # Get numerical values for the names
 tick_nums = []
@@ -285,10 +309,15 @@ for x in ticks_names:
 ax1.set_xticks(tick_nums)
 ax1.set_xticklabels(ticks_names)
 
-# Use the twinx() command to plot more data on the other axis
-ax2 = ax1.twinx()
+# Plot lines of code vs. time
 ax2.plot(date_nums, np.divide(n_lines, 1000.), color=u'#6acc65', marker='s', linestyle='-', markersize=4, markevery=5)
 ax2.set_ylabel('Lines of code in thousands (green squares)')
+
+# Trying to get the grid lines "under" the data using the method described here:
+# https://stackoverflow.com/questions/1726391/matplotlib-draw-grid-lines-behind-other-graph-elements
+# but this does not seem to have any effect no matter what number I use.
+# [line.set_zorder(10) for line in ax1.lines]
+# [line.set_zorder(10) for line in ax2.lines]
 
 # Create linear curve fits of the data
 files_fit = np.polyfit(date_nums, n_files, 1)
@@ -303,13 +332,6 @@ lines_per_month = lines_fit[0]*(365./12.)
 # lines_msg = 'Approx. ' + '%.1f' % lines_per_month + ' lines added/month'
 # ax1.text(date_nums[len(date_nums)/4], 300, files_msg);
 # ax1.text(date_nums[len(date_nums)/4], 250, lines_msg);
-
-# We use the grid lines from the second axis (lines of code) as I think
-# that is generally of more interest than number of files. I ran into
-# an issue using axis='both', but turning on the x-grid on ax1 and the
-# y-grid on ax2 seems to do the trick.
-ax1.grid(b=True, axis='x', color='lightgray', linestyle='--', linewidth=1)
-ax2.grid(b=True, axis='y', color='lightgray', linestyle='--', linewidth=1)
 
 # Save as PDF
 plt.savefig('cloc_libmesh.pdf', format='pdf')

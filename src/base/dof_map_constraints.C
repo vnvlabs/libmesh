@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -50,6 +50,7 @@
 #include "libmesh/system.h" // needed by enforce_constraints_exactly()
 #include "libmesh/tensor_tools.h"
 #include "libmesh/threads.h"
+#include "libmesh/enum_to_string.h"
 
 // TIMPI includes
 #include "timpi/parallel_implementation.h"
@@ -1893,6 +1894,9 @@ void DofMap::process_mesh_constraint_rows(const MeshBase & mesh)
   libmesh_assert(!constraint_rows_empty);
 #endif
 
+  // This is fairly new code, still a bit experimental.
+  libmesh_experimental();
+
   // We can't handle periodic boundary conditions on spline meshes
   // yet.
 #ifdef LIBMESH_ENABLE_PERIODIC
@@ -2943,7 +2947,7 @@ void DofMap::enforce_constraints_exactly (const System & system,
       v_global = v;
     }
   else // unknown v->type()
-    libmesh_error_msg("ERROR: Unknown v->type() == " << v->type());
+    libmesh_error_msg("ERROR: Unsupported NumericVector type == " << Utility::enum_to_string(v->type()));
 
   // We should never hit these asserts because we should error-out in
   // else clause above.  Just to be sure we don't try to use v_local
@@ -3015,7 +3019,7 @@ void DofMap::enforce_constraints_on_residual (const NonlinearImplicitSystem & sy
       solution_local = solution_built.get();
     }
   else // unknown solution->type()
-    libmesh_error_msg("ERROR: Unknown solution->type() == " << solution->type());
+    libmesh_error_msg("ERROR: Unsupported NumericVector type == " << Utility::enum_to_string(solution->type()));
 
   // We should never hit these asserts because we should error-out in
   // else clause above.  Just to be sure we don't try to use solution_local

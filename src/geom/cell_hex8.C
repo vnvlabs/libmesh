@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -176,9 +176,14 @@ void Hex8::build_side_ptr (std::unique_ptr<Elem> & side,
 
 std::unique_ptr<Elem> Hex8::build_edge_ptr (const unsigned int i)
 {
-  libmesh_assert_less (i, this->n_edges());
+  return this->simple_build_edge_ptr<Edge2,Hex8>(i);
+}
 
-  return libmesh_make_unique<SideEdge<Edge2,Hex8>>(this,i);
+
+
+void Hex8::build_edge_ptr (std::unique_ptr<Elem> & edge, const unsigned int i)
+{
+  this->simple_build_edge_ptr<Hex8>(edge, i, EDGE2);
 }
 
 
@@ -389,5 +394,50 @@ Hex8::loose_bounding_box () const
 {
   return Elem::loose_bounding_box();
 }
+
+
+void
+Hex8::permute(unsigned int perm_num)
+{
+  libmesh_assert_less (perm_num, 24);
+  const unsigned int side = perm_num % 6;
+  const unsigned int rotate = perm_num / 6;
+
+  for (unsigned int i = 0; i != rotate; ++i)
+    {
+      swap4nodes(0,1,2,3);
+      swap4nodes(4,5,6,7);
+    }
+
+  switch (side) {
+  case 0:
+    break;
+  case 1:
+    swap4nodes(3,7,4,0);
+    swap4nodes(2,6,5,1);
+    break;
+  case 2:
+    swap4nodes(0,4,5,1);
+    swap4nodes(3,7,6,2);
+    break;
+  case 3:
+    swap4nodes(0,4,7,3);
+    swap4nodes(1,5,6,2);
+    break;
+  case 4:
+    swap4nodes(1,5,4,0);
+    swap4nodes(2,6,7,3);
+    break;
+  case 5:
+    swap2nodes(0,7);
+    swap2nodes(1,6);
+    swap2nodes(2,5);
+    swap2nodes(3,4);
+    break;
+  default:
+    libmesh_error();
+  }
+}
+
 
 } // namespace libMesh

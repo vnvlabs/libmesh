@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -254,17 +254,23 @@ void DofMap::set_error_on_constraint_loop(bool error_on_constraint_loop)
 
 void DofMap::add_variable_group (const VariableGroup & var_group)
 {
-  const unsigned int vg = cast_int<unsigned int>(_variable_groups.size());
+  // Ensure that we are not duplicating an existing entry in _variable_groups
+  if (std::find(_variable_groups.begin(), _variable_groups.end(), var_group) == _variable_groups.end())
+  {
+   const unsigned int vg = cast_int<unsigned int>(_variable_groups.size());
 
-  _variable_groups.push_back(var_group);
+   _variable_groups.push_back(var_group);
 
-  VariableGroup & new_var_group = _variable_groups.back();
+    VariableGroup & new_var_group = _variable_groups.back();
 
-  for (auto var : make_range(new_var_group.n_variables()))
+    for (auto var : make_range(new_var_group.n_variables()))
     {
       _variables.push_back (new_var_group(var));
       _variable_group_numbers.push_back (vg);
     }
+  }
+  // End if check for var_group in _variable_groups
+
 }
 
 
@@ -1501,7 +1507,10 @@ merge_ghost_functor_outputs(GhostingFunctor::map_type & elements_to_ghost,
                       std::set<CouplingMatrix *>::iterator temp_it =
                         temporary_coupling_matrices.find(const_cast<CouplingMatrix *>(existing_it->second));
                       if (temp_it != temporary_coupling_matrices.end())
+                      {
+                        delete *temp_it;
                         temporary_coupling_matrices.erase(temp_it);
+                      }
 
                       existing_it->second = nullptr;
                     }

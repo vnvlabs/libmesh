@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -35,6 +35,7 @@ void QNodal::init_3D(const ElemType, unsigned int)
     case TET4:
     case PRISM6:
     case HEX8:
+    case PYRAMID5:
       {
         QTrap rule(/*dim=*/3, /*ignored*/_order);
         rule.init(_type, /*ignored*/_p_level);
@@ -103,11 +104,21 @@ void QNodal::init_3D(const ElemType, unsigned int)
     case TET10:
     case PRISM18:
     case HEX27:
+    case PYRAMID13:
+    case PYRAMID14:
       {
         QSimpson rule(/*dim=*/3, /*ignored*/_order);
         rule.init(_type, /*ignored*/_p_level);
         _points.swap (rule.get_points());
         _weights.swap(rule.get_weights());
+
+        // We can't do a proper Simpson rule for pyramids regardless
+        if (_type == PYRAMID13)
+          {
+            _points.resize(13);
+            _weights.resize(13);
+          }
+
         return;
       }
 

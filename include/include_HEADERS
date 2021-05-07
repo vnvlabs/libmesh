@@ -1,4 +1,4 @@
-# Do not edit - automatically generated from ./rebuild_include_HEADERS.sh
+# Do not edit - automatically generated from rebuild_include_HEADERS.sh
 # These are headers we need to compile the libMesh library but should
 # not be installed.  These header files may have implementation
 # details which are not required for the public interface
@@ -400,6 +400,7 @@ include_HEADERS =  \
         systems/frequency_system.h \
         systems/generic_projector.h \
         systems/implicit_system.h \
+        systems/inter_mesh_projection.h \
         systems/linear_implicit_system.h \
         systems/newmark_system.h \
         systems/nonlinear_implicit_system.h \
@@ -455,6 +456,7 @@ include_HEADERS =  \
         utils/perfmon.h \
         utils/plt_loader.h \
         utils/point_locator_base.h \
+        utils/point_locator_nanoflann.h \
         utils/point_locator_tree.h \
         utils/pointer_to_pointer_iter.h \
         utils/pool_allocator.h \

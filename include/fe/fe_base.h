@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -214,8 +214,6 @@ public:
     calculate_dual = true;
     // Dual phi computation relies on primal phi computation
     this->request_phi();
-    // also need JxW calculations
-    this->get_JxW();
     return dual_phi;
   }
 
@@ -591,8 +589,9 @@ protected:
 
   /**
    * Compute the dual basis coefficients \p dual_coeff
+   * the default qrule for element dimension and quadrature order is needed
    */
-  void compute_dual_shape_coeffs();
+  void compute_dual_shape_coeffs(const QBase & default_qrule);
 
   /**
    * Compute \p dual_phi, \p dual_dphi, \p dual_d2phi
@@ -796,7 +795,7 @@ void FEGenericBase<OutputType>::compute_dual_shape_functions ()
 }
 
 template <typename OutputType>
-void FEGenericBase<OutputType>::compute_dual_shape_coeffs ()
+void FEGenericBase<OutputType>::compute_dual_shape_coeffs (const QBase & /*default_qrule*/)
 {
   libmesh_error_msg(
       "Computation of dual shape functions for vector finite element "
@@ -809,7 +808,7 @@ template <>
 void FEGenericBase<Real>::compute_dual_shape_functions();
 
 template <>
-void FEGenericBase<Real>::compute_dual_shape_coeffs();
+void FEGenericBase<Real>::compute_dual_shape_coeffs(const QBase & default_qrule);
 
 
 // Typedefs for convenience and backwards compatibility

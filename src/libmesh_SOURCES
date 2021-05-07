@@ -90,6 +90,7 @@ libmesh_SOURCES =  \
         src/fe/fe_scalar_shape_1D.C \
         src/fe/fe_scalar_shape_2D.C \
         src/fe/fe_scalar_shape_3D.C \
+        src/fe/fe_side_hierarchic.C \
         src/fe/fe_subdivision_2D.C \
         src/fe/fe_szabab.C \
         src/fe/fe_szabab_shape_0D.C \
@@ -401,6 +402,7 @@ libmesh_SOURCES =  \
         src/systems/fem_system.C \
         src/systems/frequency_system.C \
         src/systems/implicit_system.C \
+        src/systems/inter_mesh_projection.C \
         src/systems/linear_implicit_system.C \
         src/systems/newmark_system.C \
         src/systems/nonlinear_implicit_system.C \
@@ -424,6 +426,7 @@ libmesh_SOURCES =  \
         src/utils/plt_loader_read.C \
         src/utils/plt_loader_write.C \
         src/utils/point_locator_base.C \
+        src/utils/point_locator_nanoflann.C \
         src/utils/point_locator_tree.C \
         src/utils/statistics.C \
         src/utils/string_to_enum.C \

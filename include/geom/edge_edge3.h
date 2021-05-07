@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -116,6 +116,14 @@ public:
    * numerical tolerances.
    */
   virtual bool has_affine_map () const override;
+
+  /**
+   * \returns \p true if the element map is everywhere invertible,
+   * false otherwise. The user can pass a custom tol >= 0 to this
+   * function if desired to make the check more stringent, i.e.
+   * to also catch elements which are "almost" non-invertible.
+   */
+  virtual bool has_invertible_map(Real tol) const override;
 
   /**
    * \returns \p EDGE3.

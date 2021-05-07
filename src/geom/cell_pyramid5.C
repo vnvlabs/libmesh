@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -151,6 +151,8 @@ std::unique_ptr<Elem> Pyramid5::build_side_ptr (const unsigned int i,
   std::unique_ptr<Elem> face;
   if (proxy)
     {
+#ifdef LIBMESH_ENABLE_DEPRECATED
+      libmesh_deprecated();
       switch (i)
         {
         case 0:
@@ -171,8 +173,10 @@ std::unique_ptr<Elem> Pyramid5::build_side_ptr (const unsigned int i,
         default:
           libmesh_error_msg("Invalid side i = " << i);
         }
+#else
+      libmesh_error();
+#endif // LIBMESH_ENABLE_DEPRECATED
     }
-
   else
     {
       switch (i)
@@ -205,6 +209,11 @@ std::unique_ptr<Elem> Pyramid5::build_side_ptr (const unsigned int i,
     face->set_parent(nullptr);
   face->set_interior_parent(this);
 
+  face->subdomain_id() = this->subdomain_id();
+#ifdef LIBMESH_ENABLE_AMR
+  face->set_p_level(this->p_level());
+#endif
+
   return face;
 }
 
@@ -220,9 +229,14 @@ void Pyramid5::build_side_ptr (std::unique_ptr<Elem> & side,
 
 std::unique_ptr<Elem> Pyramid5::build_edge_ptr (const unsigned int i)
 {
-  libmesh_assert_less (i, this->n_edges());
+  return this->simple_build_edge_ptr<Edge2,Pyramid5>(i);
+}
 
-  return libmesh_make_unique<SideEdge<Edge2,Pyramid5>>(this,i);
+
+
+void Pyramid5::build_edge_ptr (std::unique_ptr<Elem> & edge, const unsigned int i)
+{
+  this->simple_build_edge_ptr<Pyramid5>(edge, i, EDGE2);
 }
 
 
@@ -295,5 +309,16 @@ Pyramid5::loose_bounding_box () const
 {
   return Elem::loose_bounding_box();
 }
+
+void Pyramid5::permute(unsigned int perm_num)
+{
+  libmesh_assert_less (perm_num, 4);
+
+  for (unsigned int i = 0; i != perm_num; ++i)
+    {
+      swap4nodes(0,1,2,3);
+    }
+}
+
 
 } // namespace libMesh

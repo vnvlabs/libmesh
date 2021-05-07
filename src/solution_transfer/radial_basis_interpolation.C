@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -85,9 +85,10 @@ void RadialBasisInterpolation<KDDim,RBF>::prepare_for_use()
       }
   }
 
-  libMesh::out << "bounding box is \n"
-               << _src_bbox.min() << '\n'
-               << _src_bbox.max() << std::endl;
+  // Debugging code
+  // libMesh::out << "bounding box is \n"
+  //              << _src_bbox.min() << '\n'
+  //              << _src_bbox.max() << std::endl;
 
 
   // Construct the Radial Basis Function, giving it the size of the domain
@@ -98,11 +99,11 @@ void RadialBasisInterpolation<KDDim,RBF>::prepare_for_use()
 
   RBF rbf(_r_bbox);
 
-  libMesh::out << "bounding box is \n"
-               << _src_bbox.min() << '\n'
-               << _src_bbox.max() << '\n'
-               << "r_bbox = " << _r_bbox << '\n'
-               << "rbf(r_bbox/2) = " << rbf(_r_bbox/2) << std::endl;
+  // libMesh::out << "bounding box is \n"
+  //              << _src_bbox.min() << '\n'
+  //              << _src_bbox.max() << '\n'
+  //              << "r_bbox = " << _r_bbox << '\n'
+  //              << "rbf(r_bbox/2) = " << rbf(_r_bbox/2) << std::endl;
 
 
   // Construct the projection Matrix

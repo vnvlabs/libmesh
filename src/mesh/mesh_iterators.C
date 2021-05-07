@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -165,9 +165,10 @@ INSTANTIATE_ELEM_ACCESSORS(flagged_elements,                Flagged,            
 INSTANTIATE_ELEM_ACCESSORS(flagged_pid_elements,            FlaggedPID,           unsigned char rflag LIBMESH_COMMA processor_id_type pid,    rflag, pid)
 #endif
 
-INSTANTIATE_ELEM_ACCESSORS(local_level_elements,            LocalLevel,           unsigned int level,             this->processor_id(), level)
-INSTANTIATE_ELEM_ACCESSORS(local_not_level_elements,        LocalNotLevel,        unsigned int level,             this->processor_id(), level)
-INSTANTIATE_ELEM_ACCESSORS(active_local_subdomain_elements, ActiveLocalSubdomain, subdomain_id_type subdomain_id, this->processor_id(), subdomain_id)
+INSTANTIATE_ELEM_ACCESSORS(local_level_elements,                LocalLevel,              unsigned int level,             this->processor_id(), level)
+INSTANTIATE_ELEM_ACCESSORS(local_not_level_elements,            LocalNotLevel,           unsigned int level,             this->processor_id(), level)
+INSTANTIATE_ELEM_ACCESSORS(active_local_subdomain_elements,     ActiveLocalSubdomain,    subdomain_id_type subdomain_id, this->processor_id(), subdomain_id)
+INSTANTIATE_ELEM_ACCESSORS(active_local_subdomain_set_elements, ActiveLocalSubdomainSet, std::set<subdomain_id_type> ss, this->processor_id(), ss)
 
 // Instantiate various node iterator accessor functions.
 INSTANTIATE_NODE_ACCESSORS(nodes,        NotNull, EMPTY,                               EMPTY)

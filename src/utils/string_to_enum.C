@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -233,26 +233,27 @@ void init_fefamily_to_enum ()
 {
   if (fefamily_to_enum.empty())
     {
-      fefamily_to_enum["LAGRANGE"     ]=LAGRANGE;
-      fefamily_to_enum["LAGRANGE_VEC" ]=LAGRANGE_VEC;
-      fefamily_to_enum["L2_LAGRANGE"  ]=L2_LAGRANGE;
-      fefamily_to_enum["HIERARCHIC"   ]=HIERARCHIC;
-      fefamily_to_enum["L2_HIERARCHIC"]=L2_HIERARCHIC;
-      fefamily_to_enum["MONOMIAL"     ]=MONOMIAL;
-      fefamily_to_enum["MONOMIAL_VEC" ]=MONOMIAL_VEC;
-      fefamily_to_enum["SCALAR"       ]=SCALAR;
-      fefamily_to_enum["XYZ"          ]=XYZ;
-      fefamily_to_enum["BERNSTEIN"    ]=BERNSTEIN;
+      fefamily_to_enum["LAGRANGE"          ]=LAGRANGE;
+      fefamily_to_enum["LAGRANGE_VEC"      ]=LAGRANGE_VEC;
+      fefamily_to_enum["L2_LAGRANGE"       ]=L2_LAGRANGE;
+      fefamily_to_enum["HIERARCHIC"        ]=HIERARCHIC;
+      fefamily_to_enum["L2_HIERARCHIC"     ]=L2_HIERARCHIC;
+      fefamily_to_enum["SIDE_HIERARCHIC"   ]=SIDE_HIERARCHIC;
+      fefamily_to_enum["MONOMIAL"          ]=MONOMIAL;
+      fefamily_to_enum["MONOMIAL_VEC"      ]=MONOMIAL_VEC;
+      fefamily_to_enum["SCALAR"            ]=SCALAR;
+      fefamily_to_enum["XYZ"               ]=XYZ;
+      fefamily_to_enum["BERNSTEIN"         ]=BERNSTEIN;
       fefamily_to_enum["RATIONAL_BERNSTEIN"]=RATIONAL_BERNSTEIN;
-      fefamily_to_enum["SZABAB"       ]=SZABAB;
-      fefamily_to_enum["INFINITE_MAP" ]=INFINITE_MAP;
-      fefamily_to_enum["JACOBI_20_00" ]=JACOBI_20_00;
-      fefamily_to_enum["JACOBI_30_00" ]=JACOBI_30_00;
-      fefamily_to_enum["LEGENDRE"     ]=LEGENDRE;
-      fefamily_to_enum["CLOUGH"       ]=CLOUGH;
-      fefamily_to_enum["HERMITE"      ]=HERMITE;
-      fefamily_to_enum["SUBDIVISION"  ]=SUBDIVISION;
-      fefamily_to_enum["NEDELEC_ONE"  ]=NEDELEC_ONE;
+      fefamily_to_enum["SZABAB"            ]=SZABAB;
+      fefamily_to_enum["INFINITE_MAP"      ]=INFINITE_MAP;
+      fefamily_to_enum["JACOBI_20_00"      ]=JACOBI_20_00;
+      fefamily_to_enum["JACOBI_30_00"      ]=JACOBI_30_00;
+      fefamily_to_enum["LEGENDRE"          ]=LEGENDRE;
+      fefamily_to_enum["CLOUGH"            ]=CLOUGH;
+      fefamily_to_enum["HERMITE"           ]=HERMITE;
+      fefamily_to_enum["SUBDIVISION"       ]=SUBDIVISION;
+      fefamily_to_enum["NEDELEC_ONE"       ]=NEDELEC_ONE;
     }
 
 }

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -1183,7 +1183,7 @@ void MeshCommunication::broadcast (MeshBase & mesh) const
                                        mesh_inserter_iterator<Elem>(mesh));
 
   // Make sure mesh_dimension and elem_dimensions are consistent.
-  mesh.cache_elem_dims();
+  mesh.cache_elem_data();
 
   // We may have constraint rows on IsoGeometric Analysis meshes.  We
   // don't want to send these along with constrained nodes (like we
@@ -2118,21 +2118,24 @@ MeshCommunication::delete_remote_elements (DistributedMesh & mesh,
   // elements it pointed to have been deleted.
   mesh.clear_point_locator();
 
-  // Much of our boundary info may have been for now-remote parts of
-  // the mesh, in which case we don't want to keep local copies.
-  mesh.get_boundary_info().regenerate_id_sets();
-
   // Many of our constraint rows may have been for non-local parts of
   // the mesh, which we don't need, and which we didn't specifically
   // save dependencies for.  The mesh deleted rows for remote nodes
   // when we deleted those, but let's delete rows for ghosted nodes.
-  for (auto & row : mesh.get_constraint_rows())
+  //
+  // We can't do erasure inside a range for
+  for (auto it = mesh.get_constraint_rows().begin(),
+       end = mesh.get_constraint_rows().end();
+       it != end;)
     {
+      auto & row = *it;
       const Node * node = row.first;
       libmesh_assert(node == mesh.node_ptr(node->id()));
 
       if (node->processor_id() != mesh.processor_id())
-        mesh.get_constraint_rows().erase(node);
+        mesh.get_constraint_rows().erase(it++);
+      else
+        ++it;
     }
 
   // We now have all remote elements and nodes deleted; our ghosting

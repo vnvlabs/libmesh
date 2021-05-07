@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -243,6 +243,20 @@ void ExodusII_IO::read (const std::string & fname)
       for (int j=nelem_last_block; j<jmax; j++)
         {
           auto uelem = Elem::build(conv.libmesh_elem_type());
+
+          // Make sure that Exodus's number of nodes per Elem matches
+          // the number of Nodes for this type of Elem. We only check
+          // this for the first Elem in each block, since these values
+          // are the same for every Elem in the block.
+          if (j == nelem_last_block)
+            libmesh_error_msg_if(exio_helper->num_nodes_per_elem != static_cast<int>(uelem->n_nodes()),
+                                 "Error: Exodus file says "
+                                 << exio_helper->num_nodes_per_elem
+                                 << " nodes per Elem, but Elem type "
+                                 << Utility::enum_to_string(uelem->type())
+                                 << " has " << uelem->n_nodes() << " nodes.");
+
+          // Assign the current subdomain to this Elem
           uelem->subdomain_id() = static_cast<subdomain_id_type>(subdomain_id);
 
           // Use the elem_num_map to obtain the ID of this element in the Exodus file

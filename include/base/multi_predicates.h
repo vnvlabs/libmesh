@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -674,6 +674,28 @@ struct ActiveSubdomainSet : abstract_multi_predicate<T>
     this->_predicates.push_back(new subdomain_set<T>(sset));
   }
 };
+
+
+
+/**
+ * Used to iterate over non-nullptr, active elements with a given PID
+ * whose subdomains are in a user-specified set.
+ */
+template <typename T>
+struct ActiveLocalSubdomainSet : abstract_multi_predicate<T>
+{
+  ActiveLocalSubdomainSet(processor_id_type my_pid,
+                          std::set<subdomain_id_type> sset)
+  {
+    this->_predicates.push_back(new not_null<T>);
+    this->_predicates.push_back(new active<T>);
+    this->_predicates.push_back(new pid<T>(my_pid));
+    this->_predicates.push_back(new subdomain_set<T>(sset));
+  }
+};
+
+
+
 
 
 

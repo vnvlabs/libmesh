@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -162,7 +162,7 @@ public:
    * The \p std::unique_ptr<Elem> handles the memory aspect.
    */
   virtual std::unique_ptr<Elem> build_side_ptr (const unsigned int i,
-                                                bool proxy=true) override;
+                                                bool proxy=false) override;
 
   /**
    * Rebuilds a TRI6 built coincident with face i.
@@ -175,6 +175,11 @@ public:
    * The \p std::unique_ptr<Elem> handles the memory aspect.
    */
   virtual std::unique_ptr<Elem> build_edge_ptr (const unsigned int i) override;
+
+  /**
+   * Rebuilds a \p EDGE3 coincident with edge i.
+   */
+  virtual void build_edge_ptr (std::unique_ptr<Elem> & edge, const unsigned int i) override;
 
   virtual void connectivity(const unsigned int sc,
                             const IOPackage iop,
@@ -234,6 +239,8 @@ public:
    * A specialization for computing the volume of a Tet10.
    */
   virtual Real volume () const override;
+
+  virtual void permute(unsigned int perm_num) override final;
 
 protected:
 
