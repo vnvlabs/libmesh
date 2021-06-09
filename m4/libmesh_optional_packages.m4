@@ -474,9 +474,9 @@ AC_CONFIG_FILES([contrib/parmetis/Makefile])
 # -------------------------------------------------------------
 
 # -------------------------------------------------------------
-# Parmetis Partitioning -- enabled by default
+# VnV -- enabled by default
 # -------------------------------------------------------------
-CONFIGURE_PARMETIS
+CONFIGURE_VNV
 AS_IF([test $enablevnv = yes],
       [libmesh_contrib_INCLUDES="$VNV_INCLUDE $libmesh_contrib_INCLUDES"
        libmesh_optional_LIBS="$VNV_LIB $libmesh_optional_LIBS"])

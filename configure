@@ -765,6 +765,8 @@ DOT
 DOXYGEN
 LIBMESH_ENABLE_VNV_FALSE
 LIBMESH_ENABLE_VNV_TRUE
+VNV_LIB
+VNV_INCLUDE
 LIBMESH_ENABLE_PARMETIS_FALSE
 LIBMESH_ENABLE_PARMETIS_TRUE
 PARMETIS_LIB
@@ -1245,6 +1247,8 @@ with_metis_include
 enable_parmetis
 with_parmetis
 with_parmetis_include
+enable_vnv
+with_vnv
 enable_tetgen
 enable_triangle
 enable_qhull
@@ -2045,6 +2049,7 @@ Optional Features:
   --disable-metis         build without Metis graph partitioning support
   --disable-parmetis      build without Parmetis parallel graph partitioning
                           support
+  --disable-vnv           build without VNV support
   --disable-tetgen        build without TetGen tetrahedralization library
                           support
   --disable-triangle      build without Triangle Delaunay triangulation
@@ -2155,6 +2160,8 @@ Optional Packages:
   --with-parmetis=<internal,PETSc,/some/libdir>
                           internal: build from contrib, PETSc: rely on PETSc
   --with-parmetis-include=</some/includedir>
+
+  --with-vnv=</path/to/vnv>
 
   --with-vtk-include=PATH Specify the path for VTK header files
   --with-vtk-lib=PATH     Specify the path for VTK libs
@@ -52163,131 +52170,105 @@ ac_config_files="$ac_config_files contrib/parmetis/Makefile"
 # -------------------------------------------------------------
 
 # -------------------------------------------------------------
-# Parmetis Partitioning -- enabled by default
+# VnV -- enabled by default
 # -------------------------------------------------------------
 
-  # Check whether --enable-parmetis was given.
-if test "${enable_parmetis+set}" = set; then :
-  enableval=$enable_parmetis; case "${enableval}" in #(
+  # Check whether --enable-vnv was given.
+if test "${enable_vnv+set}" = set; then :
+  enableval=$enable_vnv; case "${enableval}" in #(
   yes) :
-    enableparmetis=yes ;; #(
+    enablevnv=yes ;; #(
   no) :
-    enableparmetis=no ;; #(
+    enablevnv=no ;; #(
   *) :
-    as_fn_error $? "bad value ${enableval} for --enable-parmetis" "$LINENO" 5 ;;
+    as_fn_error $? "bad value ${enableval} for --enable-vnv" "$LINENO" 5 ;;
 esac
 else
-  enableparmetis=$enableoptional
+  enablevnv=$enableoptional
 fi
 
 
 
-# Check whether --with-parmetis was given.
-if test "${with_parmetis+set}" = set; then :
-  withval=$with_parmetis; case "${withval}" in #(
-  internal) :
-    build_parmetis=yes ;; #(
-  PETSc) :
-    build_parmetis=petsc ;; #(
-  *) :
-    PARMETIS_LIB="-L${withval} -lparmetis"
-                       build_parmetis=no ;;
-esac
-              enableparmetis=yes
+
+
+# Check whether --with-vnv was given.
+if test "${with_vnv+set}" = set; then :
+  withval=$with_vnv; VNV_INCLUDE="-I${withval}/include"
+              VNV_LIB="-L${withval}/lib -linjection"
+              enablevnv=yes
+
+fi
+
+
+
+
+      if test "$enablevnv" = "yes"; then :
+
+
+$as_echo "#define HAVE_VNV 1" >>confdefs.h
+
+          { $as_echo "$as_me:${as_lineno-$LINENO}: result: <<< Configuring library with VNV support >>>" >&5
+$as_echo "<<< Configuring library with VNV support >>>" >&6; }
+
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for thread local storage (TLS) class" >&5
+$as_echo_n "checking for thread local storage (TLS) class... " >&6; }
+  if ${ac_cv_tls+:} false; then :
+  $as_echo_n "(cached) " >&6
 else
-  build_parmetis=yes
-fi
 
+    ax_tls_keywords="__thread __declspec(thread) none"
+    for ax_tls_keyword in $ax_tls_keywords; do
+      case $ax_tls_keyword in
+        none) ac_cv_tls=none ; break ;;
+        *)
+           cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdlib.h>
+               static void
+               foo(void) {
+               static  $ax_tls_keyword  int bar;
+               exit(1);
+               }
+int
+main ()
+{
 
-
-# Check whether --with-parmetis-include was given.
-if test "${with_parmetis_include+set}" = set; then :
-  withval=$with_parmetis_include; PARMETIS_INCLUDE="-I${withval}"
-              enableparmetis=yes
-              build_parmetis=no
-fi
-
-
-      if test "x$petsc_have_metis" = "x"; then :
-  petsc_have_metis=0
-fi
-  if test "x$petsc_have_parmetis" = "x"; then :
-  petsc_have_parmetis=0
-fi
-
-        if test $petsc_have_metis -gt 0; then :
-
-         if test $petsc_have_parmetis -gt 0; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: <<< Using PETSc ParMETIS support to avoid PETSc conflict>>>" >&5
-$as_echo "<<< Using PETSc ParMETIS support to avoid PETSc conflict>>>" >&6; }
-                build_parmetis=petsc
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_compile "$LINENO"; then :
+  ac_cv_tls=$ax_tls_keyword ; break
 else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: <<< Disabling ParMETIS support to avoid PETSc conflict>>>" >&5
-$as_echo "<<< Disabling ParMETIS support to avoid PETSc conflict>>>" >&6; }
-                enableparmetis=no
-fi
+  ac_cv_tls=none
 
 fi
-
-            if test "$enableparmetis" = "yes" && test "$build_parmetis" = "petsc"; then :
-
-          if test "x$petsc_have_metis" = "x0" &&
-                 test "x$petsc_have_parmetis" = "x0"; then :
-  build_parmetis=yes
-fi
-          if test "$enablepetsc" = "no"; then :
-  build_parmetis=yes
-fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+      esac
+    done
 
 fi
 
-    if test "x$enablempi" = "xno"; then :
-  enableparmetis=no
-fi
 
-      if test "x$enableparmetis" = "xyes"; then :
+  if test "$ac_cv_tls" != "none"; then
 
+cat >>confdefs.h <<_ACEOF
+#define TLS $ac_cv_tls
+_ACEOF
 
-$as_echo "#define HAVE_PARMETIS 1" >>confdefs.h
+  fi
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_tls" >&5
+$as_echo "$ac_cv_tls" >&6; }
 
-
-                    if test "$build_parmetis" = "yes"; then :
-
-                  PARMETIS_INCLUDE="-I\$(top_srcdir)/contrib/parmetis/include"
-                  PARMETIS_LIB="" # contrib Parmetis gets lumped into libcontrib
-                  { $as_echo "$as_me:${as_lineno-$LINENO}: result: <<< Configuring library with internal Parmetis support >>>" >&5
-$as_echo "<<< Configuring library with internal Parmetis support >>>" >&6; }
-
-elif test "$build_parmetis" = "petsc"; then :
-
-                  PARMETIS_INCLUDE=""
-                  PARMETIS_LIB=""
-                  { $as_echo "$as_me:${as_lineno-$LINENO}: result: <<< Configuring library with PETSc Parmetis support >>>" >&5
-$as_echo "<<< Configuring library with PETSc Parmetis support >>>" >&6; }
 
 else
 
-                  { $as_echo "$as_me:${as_lineno-$LINENO}: result: <<< Configuring library with external Parmetis support >>>" >&5
-$as_echo "<<< Configuring library with external Parmetis support >>>" >&6; }
+          VNV_INCLUDE=""
+          VNV_LIB=""
+          enablevnv=no
 
 fi
-
-else
-
-          PARMETIS_INCLUDE=""
-          PARMETIS_LIB=""
-          enableparmetis=no
-          build_parmetis=no
-
-fi
-   if test x$build_parmetis = xyes; then
-  BUILD_PARMETIS_TRUE=
-  BUILD_PARMETIS_FALSE='#'
-else
-  BUILD_PARMETIS_TRUE='#'
-  BUILD_PARMETIS_FALSE=
-fi
-
 
 
 
@@ -56741,10 +56722,6 @@ if test -z "${LIBMESH_ENABLE_PARMETIS_TRUE}" && test -z "${LIBMESH_ENABLE_PARMET
   as_fn_error $? "conditional \"LIBMESH_ENABLE_PARMETIS\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
-if test -z "${BUILD_PARMETIS_TRUE}" && test -z "${BUILD_PARMETIS_FALSE}"; then
-  as_fn_error $? "conditional \"BUILD_PARMETIS\" was never defined.
-Usually this means the macro was only invoked conditionally." "$LINENO" 5
-fi
 if test -z "${LIBMESH_ENABLE_VNV_TRUE}" && test -z "${LIBMESH_ENABLE_VNV_FALSE}"; then
   as_fn_error $? "conditional \"LIBMESH_ENABLE_VNV\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
@@ -60388,6 +60365,11 @@ fi
         $as_echo "  vtk.............................. : $enablevtk"
         if test "x$enablevtk" = "xyes"; then :
   $as_echo "     version....................... : $vtkversion"
+fi
+        $as_echo
+        $as_echo "  vnv.............................. : $enablevnv"
+        if test "x$enablevnv" = "xyes"; then :
+  $as_echo "     version....................... : unknown"
 fi
         $as_echo
         if test "x$libmesh_optional_INCLUDES" != "x"; then :

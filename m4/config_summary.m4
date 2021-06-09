@@ -163,6 +163,10 @@ AS_IF([test "x$enableoptional" = "xyes"],
         AS_IF([test "x$enablevtk" = "xyes"],
               [AS_ECHO(["     version....................... : $vtkversion"])])
         AS_ECHO([])
+        AS_ECHO(["  vnv.............................. : $enablevnv"])
+        AS_IF([test "x$enablevnv" = "xyes"],
+              [AS_ECHO(["     version....................... : unknown"])])
+        AS_ECHO([])
         AS_IF([test "x$libmesh_optional_INCLUDES" != "x"],
               [
                 AS_ECHO(["  libmesh_optional_INCLUDES........ : $libmesh_optional_INCLUDES"])

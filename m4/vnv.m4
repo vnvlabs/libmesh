@@ -15,7 +15,7 @@ AC_DEFUN([CONFIGURE_VNV],
 
 
   AC_ARG_WITH(vnv,
-             AS_HELP_STRING([--with-vnv-include=</some/includedir>]),
+             AS_HELP_STRING([--with-vnv=</path/to/vnv>]),
              [VNV_INCLUDE="-I${withval}/include"
               VNV_LIB="-L${withval}/lib -linjection"
               enablevnv=yes
@@ -29,8 +29,8 @@ AC_DEFUN([CONFIGURE_VNV],
   AS_IF([test "$enablevnv" = "yes"],
         [
           dnl Only put Metis contrib directories into the compiler include paths if we're building our own Metis.
-          AC_DEFINE(HAVE_VNV, 1, [Flag indicating whether the library will be compiled with Metis support])
-          AC_MSG_RESULT(<<< Configuring library with Metis support >>>)
+          AC_DEFINE(HAVE_VNV, 1, [Flag indicating whether the library will be compiled with VNV support])
+          AC_MSG_RESULT(<<< Configuring library with VNV support >>>)
 
           dnl look for thread-local storage
           AX_TLS

@@ -1,3 +1,4 @@
+
 #include <stddef.h>
 #include "VnV.h"
 
@@ -26,12 +27,13 @@ INJECTION_SUBPACKAGE(LIBMESH,PETSC)
 
 int libmesh_vnv_test_function(int x) {
    
-  INJECTION_LOOP_BEGIN(LIBMESH, VWORLD(LIBMESH), SanityCheck, x)
+  INJECTION_LOOP_BEGIN("LIBMESH", VWORLD, "SanityCheck", x);
   for (int i = 0; i < 10; i++) {
     x += i;
-    INJECTION_LOOP_ITER(LIBMESH,SanityCheck, inner);
+    INJECTION_LOOP_ITER("LIBMESH","SanityCheck", "inner");
   }
 
-  INJECTION_LOOP_END(LIBMESH,SanityCheck);
+  INJECTION_LOOP_END("LIBMESH","SanityCheck");
   return x;
 }
+

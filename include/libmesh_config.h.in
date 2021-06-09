@@ -578,6 +578,9 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
+/* Flag indicating whether the library will be compiled with VNV support */
+#undef HAVE_VNV
+
 /* Flag indicating whether the library will be compiled with VTK support */
 #undef HAVE_VTK
 

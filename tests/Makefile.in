@@ -173,8 +173,8 @@ am__aclocal_m4_deps =  \
 	$(top_srcdir)/m4/tecplot.m4 $(top_srcdir)/m4/tetgen.m4 \
 	$(top_srcdir)/m4/threads.m4 $(top_srcdir)/m4/triangle.m4 \
 	$(top_srcdir)/m4/trilinos.m4 $(top_srcdir)/m4/unordered.m4 \
-	$(top_srcdir)/m4/vtk.m4 $(top_srcdir)/m4/xdr.m4 \
-	$(top_srcdir)/configure.ac
+	$(top_srcdir)/m4/vnv.m4 $(top_srcdir)/m4/vtk.m4 \
+	$(top_srcdir)/m4/xdr.m4 $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 DIST_COMMON = $(srcdir)/Makefile.am $(am__DIST_COMMON)
@@ -1814,6 +1814,8 @@ TRILINOS_INCLUDES = @TRILINOS_INCLUDES@
 TRILINOS_LIBS = @TRILINOS_LIBS@
 TRILINOS_MAKEFILE_EXPORT = @TRILINOS_MAKEFILE_EXPORT@
 VERSION = @VERSION@
+VNV_INCLUDE = @VNV_INCLUDE@
+VNV_LIB = @VNV_LIB@
 VTK_DIR = @VTK_DIR@
 VTK_INCLUDE = @VTK_INCLUDE@
 VTK_LIBRARY = @VTK_LIBRARY@
