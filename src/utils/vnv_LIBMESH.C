@@ -8,6 +8,7 @@
 //PACKAGENAME: LIBMESH
 
 #include "VnV.h" 
+
 DECLARESUBPACKAGE(PETSC)
 DECLAREOPTIONS(LIBMESH)
 const char* getFullRegistrationJson_LIBMESH(){
@@ -16,7 +17,6 @@ const char* getFullRegistrationJson_LIBMESH(){
 INJECTION_REGISTRATION(LIBMESH){
 	REGISTERSUBPACKAGE(LIBMESH,PETSC);
 	REGISTEROPTIONS(LIBMESH)
-	VnV_Declare_Communicator("LIBMESH","VNV","mpi");
 	Register_Injection_Point("LIBMESH","SanityCheck",0,"{\"x\":\"int\"}");
 	REGISTER_FULL_JSON(LIBMESH, getFullRegistrationJson_LIBMESH);
 };
