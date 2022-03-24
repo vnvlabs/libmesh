@@ -1,12 +1,12 @@
 [submodule "contrib/metaphysicl"]
 	path = contrib/metaphysicl
-	url = ../../libMesh/MetaPhysicL
+	url = https://github.com/libMesh/MetaPhysicL
 [submodule "contrib/timpi"]
 	path = contrib/timpi
-	url = ../../libMesh/TIMPI
+	url = https://github.com/libMesh/TIMPI
 [submodule "m4/autoconf-submodule"]
 	path = m4/autoconf-submodule
-	url = ../../libMesh/autoconf-submodule
+	url = https://github.com/libMesh/autoconf-submodule
 [submodule "contrib/poly2tri/poly2tri"]
 	path = contrib/poly2tri/poly2tri
-	url = ../../jhasse/poly2tri.git
+	url = https://github.com/jhasse/poly2tri.git
