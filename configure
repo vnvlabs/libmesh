@@ -771,6 +771,10 @@ HAVE_DOT
 DOTPATH
 DOT
 DOXYGEN
+LIBMESH_ENABLE_VNV_FALSE
+LIBMESH_ENABLE_VNV_TRUE
+VNV_LIB
+VNV_INCLUDE
 LIBMESH_ENABLE_PARMETIS_FALSE
 LIBMESH_ENABLE_PARMETIS_TRUE
 PARMETIS_LIB
@@ -1117,6 +1121,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -1253,6 +1258,8 @@ with_metis_include
 enable_parmetis
 with_parmetis
 with_parmetis_include
+enable_vnv
+with_vnv
 enable_poly2tri
 enable_tetgen
 enable_triangle
@@ -1366,6 +1373,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE_TARNAME}'
@@ -1618,6 +1626,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1755,7 +1772,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1908,6 +1925,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -2057,6 +2075,7 @@ Optional Features:
   --disable-metis         build without Metis graph partitioning support
   --disable-parmetis      build without Parmetis parallel graph partitioning
                           support
+  --disable-vnv           build without VNV support
   --enable-poly2tri       build with poly2tri API support
   --disable-tetgen        build without TetGen tetrahedralization library
                           support
@@ -2171,6 +2190,8 @@ Optional Packages:
   --with-parmetis=<internal,PETSc,/some/libdir>
                           internal: build from contrib, PETSc: rely on PETSc
   --with-parmetis-include=</some/includedir>
+
+  --with-vnv=</path/to/vnv>
 
   --with-vtk-include=PATH Specify the path for VTK header files
   --with-vtk-lib=PATH     Specify the path for VTK libs
@@ -4145,12 +4166,7 @@ program_transform_name=`$as_echo "$program_transform_name" | sed "$ac_script"`
 am_aux_dir=`cd "$ac_aux_dir" && pwd`
 
 if test x"${MISSING+set}" != xset; then
-  case $am_aux_dir in
-  *\ * | *\	*)
-    MISSING="\${SHELL} \"$am_aux_dir/missing\"" ;;
-  *)
-    MISSING="\${SHELL} $am_aux_dir/missing" ;;
-  esac
+  MISSING="\${SHELL} '$am_aux_dir/missing'"
 fi
 # Use eval to expand $SHELL
 if eval "$MISSING --is-lightweight"; then
@@ -49184,6 +49200,8 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
+    saveCFLAGS="$CFLAGS"
+    CFLAGS="$saveCFLAGS $PETSCINCLUDEDIRS"
     as_ac_Header=`$as_echo "ac_cv_header_${PETSC_DIR}/${PETSC_ARCH}/include/petscversion.h" | $as_tr_sh`
 ac_fn_c_check_header_mongrel "$LINENO" "${PETSC_DIR}/${PETSC_ARCH}/include/petscversion.h" "$as_ac_Header" "$ac_includes_default"
 if eval test \"x\$"$as_ac_Header"\" = x"yes"; then :
@@ -49211,7 +49229,7 @@ ac_compile='$CXX -c $CXXFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CXX -o conftest$ac_exeext $CXXFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
 
-
+    CFLAGS="$saveCFLAGS"
             petsc_have_hypre=0
 
     # Grab PETSc version and substitute into Makefile.
@@ -52564,6 +52582,122 @@ fi
 ac_config_files="$ac_config_files contrib/parmetis/Makefile"
 
 # -------------------------------------------------------------
+
+# -------------------------------------------------------------
+# VnV -- enabled by default
+# -------------------------------------------------------------
+
+  # Check whether --enable-vnv was given.
+if test "${enable_vnv+set}" = set; then :
+  enableval=$enable_vnv; case "${enableval}" in #(
+  yes) :
+    enablevnv=yes ;; #(
+  no) :
+    enablevnv=no ;; #(
+  *) :
+    as_fn_error $? "bad value ${enableval} for --enable-vnv" "$LINENO" 5 ;;
+esac
+else
+  enablevnv=$enableoptional
+fi
+
+
+
+
+
+# Check whether --with-vnv was given.
+if test "${with_vnv+set}" = set; then :
+  withval=$with_vnv; VNV_INCLUDE="-I${withval}/include"
+              VNV_LIB="-L${withval}/lib -linjection"
+              enablevnv=yes
+
+fi
+
+
+
+
+      if test "$enablevnv" = "yes"; then :
+
+
+$as_echo "#define HAVE_VNV 1" >>confdefs.h
+
+          { $as_echo "$as_me:${as_lineno-$LINENO}: result: <<< Configuring library with VNV support >>>" >&5
+$as_echo "<<< Configuring library with VNV support >>>" >&6; }
+
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for thread local storage (TLS) class" >&5
+$as_echo_n "checking for thread local storage (TLS) class... " >&6; }
+  if ${ac_cv_tls+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+    ax_tls_keywords="__thread __declspec(thread) none"
+    for ax_tls_keyword in $ax_tls_keywords; do
+      case $ax_tls_keyword in
+        none) ac_cv_tls=none ; break ;;
+        *)
+           cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdlib.h>
+               static void
+               foo(void) {
+               static  $ax_tls_keyword  int bar;
+               exit(1);
+               }
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_compile "$LINENO"; then :
+  ac_cv_tls=$ax_tls_keyword ; break
+else
+  ac_cv_tls=none
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+      esac
+    done
+
+fi
+
+
+  if test "$ac_cv_tls" != "none"; then
+
+cat >>confdefs.h <<_ACEOF
+#define TLS $ac_cv_tls
+_ACEOF
+
+  fi
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_tls" >&5
+$as_echo "$ac_cv_tls" >&6; }
+
+
+else
+
+          VNV_INCLUDE=""
+          VNV_LIB=""
+          enablevnv=no
+
+fi
+
+
+
+
+if test $enablevnv = yes; then :
+  libmesh_contrib_INCLUDES="$VNV_INCLUDE $libmesh_contrib_INCLUDES"
+       libmesh_optional_LIBS="$VNV_LIB $libmesh_optional_LIBS"
+fi
+ if test x$enablevnv = xyes; then
+  LIBMESH_ENABLE_VNV_TRUE=
+  LIBMESH_ENABLE_VNV_FALSE='#'
+else
+  LIBMESH_ENABLE_VNV_TRUE='#'
+  LIBMESH_ENABLE_VNV_FALSE=
+fi
 
 
 
@@ -57410,6 +57544,10 @@ if test -z "${LIBMESH_ENABLE_PARMETIS_TRUE}" && test -z "${LIBMESH_ENABLE_PARMET
   as_fn_error $? "conditional \"LIBMESH_ENABLE_PARMETIS\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
+if test -z "${LIBMESH_ENABLE_VNV_TRUE}" && test -z "${LIBMESH_ENABLE_VNV_FALSE}"; then
+  as_fn_error $? "conditional \"LIBMESH_ENABLE_VNV\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
 if test -z "${LIBMESH_ENABLE_POLY2TRI_TRUE}" && test -z "${LIBMESH_ENABLE_POLY2TRI_FALSE}"; then
   as_fn_error $? "conditional \"LIBMESH_ENABLE_POLY2TRI\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
@@ -59685,7 +59823,9 @@ $as_echo X/"$am_mf" |
     { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 as_fn_error $? "Something went wrong bootstrapping makefile fragments
-    for automatic dependency tracking.  Try re-running configure with the
+    for automatic dependency tracking.  If GNU make was not used, consider
+    re-running the configure script with MAKE=\"gmake\" (or whatever is
+    necessary).  You can also try re-running configure with the
     '--disable-dependency-tracking' option to at least be able to build
     the package (albeit without support for automatic dependency tracking).
 See \`config.log' for more details" "$LINENO" 5; }
@@ -61073,7 +61213,14 @@ fi
   $as_echo "     version....................... : $vtkversion"
 fi
         $as_echo
-        if test "x$libmesh_contrib_INCLUDES" != "x"; then :
+
+	$as_echo "  vnv.............................. : $enablevnv"
+        if test "x$enablevnv" = "xyes"; then :
+  $as_echo "     version....................... : unknown"
+fi
+        $as_echo
+
+	if test "x$libmesh_contrib_INCLUDES" != "x"; then :
 
                 $as_echo "  libmesh_contrib_INCLUDES......... : $libmesh_contrib_INCLUDES"
                 $as_echo
