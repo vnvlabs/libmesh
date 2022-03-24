@@ -1,6 +1,7 @@
 // Basic include files
 #include "libmesh/equation_systems.h"
 #include "libmesh/exodusII_io.h"
+#include "libmesh/nemesis_io.h"
 #include "libmesh/replicated_mesh.h"
 #include "libmesh/mesh_generation.h"
 #include "libmesh/parallel.h" // set_union
@@ -20,15 +21,21 @@ class WriteEdgesetData : public CppUnit::TestCase
    * This test ensures you can write both vector and scalar variables
    */
 public:
-  CPPUNIT_TEST_SUITE(WriteEdgesetData);
+  LIBMESH_CPPUNIT_TEST_SUITE(WriteEdgesetData);
 
 #if LIBMESH_DIM > 1
-  CPPUNIT_TEST(testWrite);
+#ifdef LIBMESH_HAVE_EXODUS_API
+  CPPUNIT_TEST(testWriteExodus);
+#endif // #ifdef LIBMESH_HAVE_EXODUS_API
+#ifdef LIBMESH_HAVE_NEMESIS_API
+  // CPPUNIT_TEST(testWriteNemesis); // Not yet implemented
+#endif
 #endif
 
   CPPUNIT_TEST_SUITE_END();
 
-  void testWrite()
+  template <typename IOClass>
+  void testWriteImpl(const std::string & filename)
   {
     ReplicatedMesh mesh(*TestCommWorld);
 
@@ -67,12 +74,10 @@ public:
     bi.edgeset_name(0) = "back_edgeset";
     bi.edgeset_name(5) = "front_edgeset";
 
-#ifdef LIBMESH_HAVE_EXODUS_API
-
-    // We write the file in the ExodusII format.
+    // We write the file in the requested format.
     {
-      ExodusII_IO writer(mesh);
-      writer.write("write_edgeset_data.e");
+      IOClass writer(mesh);
+      writer.write(filename);
     }
 
     // Make sure that the writing is done before the reading starts.
@@ -80,8 +85,8 @@ public:
 
     // Now read it back in
     ReplicatedMesh read_mesh(*TestCommWorld);
-    ExodusII_IO reader(read_mesh);
-    reader.read("write_edgeset_data.e");
+    IOClass reader(read_mesh);
+    reader.read(filename);
 
     // Assert that we got back out what we put in.
     BoundaryInfo & read_bi = read_mesh.get_boundary_info();
@@ -97,8 +102,21 @@ public:
       counts[std::get<2>(t)]++;
     CPPUNIT_ASSERT(counts[0] == 100);
     CPPUNIT_ASSERT(counts[5] == 100);
+  }
 
-#endif // #ifdef LIBMESH_HAVE_EXODUS_API
+  void testWriteExodus()
+  {
+    LOG_UNIT_TEST;
+
+    testWriteImpl<ExodusII_IO>("write_edgeset_data.e");
+  }
+
+  void testWriteNemesis()
+  {
+    // LOG_UNIT_TEST;
+
+    // FIXME: Not yet implemented
+    // testWriteImpl<Nemesis_IO>("write_edgeset_data.n");
   }
 };
 

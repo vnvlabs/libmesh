@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -32,10 +32,13 @@
 // Macro to identify and debug functions which should only be called in
 // parallel on every processor at once
 #undef parallel_object_only
+#undef exceptionless_parallel_object_only
 #ifndef NDEBUG
 #define parallel_object_only() libmesh_parallel_only(this->comm())
+#define exceptionless_parallel_object_only() libmesh_exceptionless_parallel_only(this->comm())
 #else
 #define parallel_object_only()  ((void) 0)
+#define exceptionless_parallel_object_only()  ((void) 0)
 #endif
 
 
@@ -85,7 +88,7 @@ public:
   /**
    * Destructor.  Virtual because we are a base class.
    */
-  virtual ~ParallelObject () {}
+  virtual ~ParallelObject () = default;
 
   /**
    * \returns A reference to the \p Parallel::Communicator object

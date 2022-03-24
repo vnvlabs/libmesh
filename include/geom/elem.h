@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -438,9 +438,12 @@ public:
 
   /**
    * \returns \p true if a vertex of \p e is contained
-   * in this element.
+   * in this element.  If \p mesh_connection is true, looks
+   * specifically for containment possibilities of an element \p e
+   * that is connected to \p this via membership in the same manifold
+   * of the same mesh.
    */
-  bool contains_vertex_of(const Elem * e) const;
+  bool contains_vertex_of(const Elem * e, bool mesh_connection=false) const;
 
   /**
    * \returns \p true if an edge of \p e is contained in
@@ -631,6 +634,11 @@ public:
    * of edges, in 3D the number of sides is the number of faces.
    */
   virtual unsigned int n_sides () const = 0;
+
+  /**
+   * \returns The type of element for side \p s.
+   */
+  virtual ElemType side_type (const unsigned int s) const = 0;
 
   /**
    * \returns An integer range from 0 up to (but not including)
@@ -891,13 +899,56 @@ public:
   virtual Order default_order () const = 0;
 
   /**
-   * \returns The centroid of the element. The centroid is
-   * computed as the average of all the element vertices.
-   *
-   * This method is virtual since some derived elements
-   * might want to use shortcuts to compute their centroid.
+   * \returns The default approximation order for side elements of
+   * this element type.  This may be lower for elements with 'bubble
+   * functions' in the Lagrange basis.
+   */
+  virtual Order default_side_order () const { return default_order(); }
+
+  /**
+   * Calls Elem::vertex_average() for backwards compatibility. This
+   * method has now been deprecated, so it will be removed at some
+   * point in the future.  Calls to Elem::centroid() in user code
+   * should be updated to either call Elem::vertex_average() or
+   * Elem::true_centroid() on a case by case basis.
    */
   virtual Point centroid () const;
+
+  /**
+   * \returns The "true" geometric centroid of the element, c=(cx, cy,
+   * cz), where:
+   *
+   * [cx]            [\int x dV]
+   * [cy] := (1/V) * [\int y dV]
+   * [cz]            [\int z dV]
+   *
+   * This method is virtual since some derived elements might want to
+   * use shortcuts to compute their centroid. For most element types,
+   * this method is more expensive than calling vertex_average(), so
+   * if you only need a point which is located "somewhere" in the
+   * interior of the element, consider calling vertex_average() instead.
+   */
+  virtual Point true_centroid () const;
+
+  /**
+   * \returns A Point at the average of the elment's vertices.
+   *
+   * \note This used to be the base class centroid() implementation, but
+   * the centroid is only equal to the vertex average in some special cases.
+   * The centroid() implementation now returns the "true" centroid of the
+   * element (up to quadrature error).
+   */
+  Point vertex_average () const;
+
+  /**
+   * \returns The "circumcenter of mass" (area-weighted average of
+   * triangulation circumcenters) of the element.
+   *
+   * Not implemented for infinite elements, not currently implemented
+   * for 3D elements, currently ignores curvature of element edges.
+   */
+  virtual Point quasicircumcenter () const
+  { libmesh_not_implemented(); }
 
   /**
    * \returns The minimum vertex separation for the element.
@@ -1149,8 +1200,9 @@ public:
   second_order_child_vertex (const unsigned int n) const;
 
   /**
-   * \returns The element type of the associated second-order element,
-   * or INVALID_ELEM for second-order or other elements that cannot be
+   * \returns The ElemType of the associated second-order element
+   * (which will be the same as the input if the input is already a
+   * second-order ElemType) or INVALID_ELEM for elements that cannot be
    * converted into higher order equivalents.
    *
    * For example, when \p this is a \p TET4, then \p TET10 is returned.
@@ -1546,6 +1598,15 @@ public:
   void hack_p_level (const unsigned int p);
 
   /**
+   * Sets the value of the p-refinement level for the element
+   * without altering the p-level of its ancestors; also sets the
+   * p_refinement_flag, simultaneously so that they can be safely
+   * checked for mutual consistency
+   */
+  void hack_p_level_and_refinement_flag (const unsigned int p,
+                                         RefinementState pflag);
+
+  /**
    * Refine the element.
    */
   virtual void refine (MeshRefinement & mesh_refinement);
@@ -1747,9 +1808,9 @@ public:
   /**
    * \returns The embedding matrix entry for the requested child.
    */
-  virtual float embedding_matrix (const unsigned int child_num,
-                                  const unsigned int child_node_num,
-                                  const unsigned int parent_node_num) const = 0;
+  virtual Real embedding_matrix (const unsigned int child_num,
+                                 const unsigned int child_node_num,
+                                 const unsigned int parent_node_num) const = 0;
 
   /**
    * \returns A "version number" that identifies which embedding
@@ -1764,6 +1825,11 @@ public:
 
 
 protected:
+
+  /**
+   * Default tolerance to use in has_affine_map().
+   */
+  static constexpr Real affine_tol = TOLERANCE*TOLERANCE;
 
   /**
    * \returns A hash key computed from a single node id.
@@ -1802,12 +1868,32 @@ protected:
   }
 
   /**
+   * Swaps two neighbor_ptrs
+   */
+  void swap2neighbors(unsigned int n1, unsigned int n2)
+  {
+    Elem * temp = this->neighbor_ptr(n1);
+    this->set_neighbor(n1, this->neighbor_ptr(n2));
+    this->set_neighbor(n2, temp);
+  }
+
+  /**
    * Swaps three node_ptrs, "rotating" them.
    */
   void swap3nodes(unsigned int n1, unsigned int n2, unsigned int n3)
   {
     swap2nodes(n1, n2);
     swap2nodes(n2, n3);
+  }
+
+  /**
+   * Swaps three neighbor_ptrs, "rotating" them.
+   */
+  void swap3neighbors(unsigned int n1, unsigned int n2,
+                      unsigned int n3)
+  {
+    swap2neighbors(n1, n2);
+    swap2neighbors(n2, n3);
   }
 
   /**
@@ -1819,6 +1905,17 @@ protected:
     swap3nodes(n1, n2, n3);
     swap2nodes(n3, n4);
   }
+
+  /**
+   * Swaps four neighbor_ptrs, "rotating" them.
+   */
+  void swap4neighbors(unsigned int n1, unsigned int n2,
+                      unsigned int n3, unsigned int n4)
+  {
+    swap3neighbors(n1, n2, n3);
+    swap2neighbors(n3, n4);
+  }
+
 
   /**
    * An implementation for simple (all sides equal) elements
@@ -2442,6 +2539,7 @@ Elem::simple_build_side_ptr (const unsigned int i,
     face->set_parent(nullptr);
   face->set_interior_parent(this);
 
+  face->set_mapping_type(this->mapping_type());
   face->subdomain_id() = this->subdomain_id();
 #ifdef LIBMESH_ENABLE_AMR
   face->set_p_level(this->p_level());
@@ -2469,6 +2567,7 @@ Elem::simple_build_side_ptr (std::unique_ptr<Elem> & side,
   else
     {
       side->subdomain_id() = this->subdomain_id();
+      side->set_mapping_type(this->mapping_type());
 #ifdef LIBMESH_ENABLE_AMR
       side->set_p_level(this->p_level());
 #endif
@@ -2543,6 +2642,7 @@ Elem::simple_build_edge_ptr (const unsigned int i)
     edge->set_node(n) = this->node_ptr(Subclass::edge_nodes_map[i][n]);
 
   edge->set_interior_parent(this);
+  edge->set_mapping_type(this->mapping_type());
   edge->subdomain_id() = this->subdomain_id();
 #ifdef LIBMESH_ENABLE_AMR
   edge->set_p_level(this->p_level());
@@ -2570,6 +2670,7 @@ Elem::simple_build_edge_ptr (std::unique_ptr<Elem> & edge,
     }
   else
     {
+      edge->set_mapping_type(this->mapping_type());
       edge->subdomain_id() = this->subdomain_id();
 #ifdef LIBMESH_ENABLE_AMR
       edge->set_p_level(this->p_level());
@@ -2947,6 +3048,13 @@ void Elem::hack_p_level(unsigned int p)
 }
 
 
+inline
+void Elem::hack_p_level_and_refinement_flag (unsigned int p,
+                                             RefinementState pflag)
+{
+  _pflag = cast_int<unsigned char>(pflag);
+  this->hack_p_level(p);
+}
 
 #endif // ifdef LIBMESH_ENABLE_AMR
 

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -40,6 +40,7 @@
 // serial matrices.  This macro will only be valid inside non-static
 // PetscMatrix methods
 #undef semiparallel_only
+#undef exceptionless_semiparallel_only
 #ifndef NDEBUG
 #include <cstring>
 
@@ -47,8 +48,13 @@
       MatGetType(_mat,&mytype);                                         \
       if (!strcmp(mytype, MATSEQAIJ))                                   \
         parallel_object_only(); } } while (0)
+#define exceptionless_semiparallel_only() do { if (this->initialized()) { const char * mytype; \
+      MatGetType(_mat,&mytype);                                         \
+      if (!strcmp(mytype, MATSEQAIJ))                                   \
+        exceptionless_parallel_object_only(); } } while (0)
 #else
 #define semiparallel_only()
+#define exceptionless_semiparallel_only()
 #endif
 
 
@@ -165,7 +171,10 @@ public:
    */
   void reset_preallocation();
 
-  virtual void clear () override;
+  /**
+   * clear() is called from the destructor, so it should not throw.
+   */
+  virtual void clear () noexcept override;
 
   virtual void zero () override;
 

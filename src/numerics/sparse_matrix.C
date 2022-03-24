@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -346,6 +346,6 @@ void SparseMatrix<T>::print(std::ostream & os, const bool sparse) const
 
 //------------------------------------------------------------------
 // Explicit instantiations
-template class SparseMatrix<Number>;
+template class LIBMESH_EXPORT SparseMatrix<Number>;
 
 } // namespace libMesh

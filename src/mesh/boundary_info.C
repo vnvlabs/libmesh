@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -29,6 +29,7 @@
 #include "libmesh/partitioner.h"
 #include "libmesh/remote_elem.h"
 #include "libmesh/unstructured_mesh.h"
+#include "libmesh/elem_side_builder.h"
 
 // TIMPI includes
 #include "timpi/parallel_sync.h"
@@ -362,23 +363,25 @@ void BoundaryInfo::get_side_and_node_maps (UnstructuredMesh & boundary_mesh,
   node_id_map.clear();
   side_id_map.clear();
 
+  // For building element sides without extraneous allocation
+  ElemSideBuilder side_builder;
   // Pull objects out of the loop to reduce heap operations
-  std::unique_ptr<const Elem> interior_parent_side;
+  const Elem * interior_parent_side;
 
   for (const auto & boundary_elem : boundary_mesh.active_element_ptr_range())
     {
       const Elem * interior_parent = boundary_elem->interior_parent();
 
       // Find out which side of interior_parent boundary_elem corresponds to.
-      // Use centroid comparison as a way to check.
+      // Use distance between average vertex location as a way to check.
       unsigned char interior_parent_side_index = 0;
       bool found_matching_sides = false;
       for (auto side : interior_parent->side_index_range())
         {
-          interior_parent->build_side_ptr(interior_parent_side, side);
-          Real centroid_distance = (boundary_elem->centroid() - interior_parent_side->centroid()).norm();
+          interior_parent_side = &side_builder(*interior_parent, side);
+          Real va_distance = (boundary_elem->vertex_average() - interior_parent_side->vertex_average()).norm();
 
-          if (centroid_distance < (tolerance * boundary_elem->hmin()))
+          if (va_distance < (tolerance * boundary_elem->hmin()))
             {
               interior_parent_side_index = cast_int<unsigned char>(side);
               found_matching_sides = true;
@@ -509,10 +512,8 @@ void BoundaryInfo::add_elements(const std::set<boundary_id_type> & requested_bou
   unsigned int parent_side_index_tag = store_parent_side_ids ?
     boundary_mesh.add_elem_integer("parent_side_index") : libMesh::invalid_uint;
 
-  for (const auto & pr : sides_to_add)
+  for (const auto & [elem_id, s] : sides_to_add)
     {
-      const dof_id_type elem_id = pr.first;
-      const unsigned char s = pr.second;
       Elem * elem = _mesh->elem_ptr(elem_id);
 
       // Build the side - do not use a "proxy" element here:
@@ -1778,8 +1779,10 @@ BoundaryInfo::build_node_list_from_side_list()
   std::unordered_map<processor_id_type, set_type> nodes_to_push;
   std::unordered_map<processor_id_type, vec_type> node_vecs_to_push;
 
+  // For avoiding extraneous element side construction
+  ElemSideBuilder side_builder;
   // Pull objects out of the loop to reduce heap operations
-  std::unique_ptr<const Elem> side;
+  const Elem * side;
 
   // Loop over the side list
   for (const auto & pr : _boundary_side_id)
@@ -1798,7 +1801,7 @@ BoundaryInfo::build_node_list_from_side_list()
 
       for (const auto & cur_elem : family)
         {
-          cur_elem->build_side_ptr(side, pr.second.first);
+          side = &side_builder(*cur_elem, pr.second.first);
 
           // Add each node node on the side with the side's boundary id
           for (auto i : side->node_index_range())
@@ -2008,13 +2011,15 @@ void BoundaryInfo::build_side_list_from_node_list()
       return;
     }
 
+  // For avoiding extraneous element side construction
+  ElemSideBuilder side_builder;
   // Pull objects out of the loop to reduce heap operations
-  std::unique_ptr<const Elem> side_elem;
+  const Elem * side_elem;
 
   for (const auto & elem : _mesh->active_element_ptr_range())
     for (auto side : elem->side_index_range())
       {
-        elem->build_side_ptr(side_elem, side);
+        side_elem = &side_builder(*elem, side);
 
         // map from nodeset_id to count for that ID
         std::map<boundary_id_type, unsigned> nodesets_node_count;
@@ -2496,8 +2501,10 @@ void BoundaryInfo::_find_id_maps(const std::set<boundary_id_type> & requested_bo
     next_node_id = first_free_node_id + this->processor_id(),
     next_elem_id = first_free_elem_id + this->processor_id();
 
+  // For avoiding extraneous element side construction
+  ElemSideBuilder side_builder;
   // Pull objects out of the loop to reduce heap operations
-  std::unique_ptr<const Elem> side;
+  const Elem * side;
 
   // We'll pass through the mesh once first to build
   // the maps and count boundary nodes and elements.
@@ -2603,7 +2610,7 @@ void BoundaryInfo::_find_id_maps(const std::set<boundary_id_type> & requested_bo
                   next_elem_id += this->n_processors() + 1;
                 }
 
-              elem->build_side_ptr(side, s);
+              side = &side_builder(*elem, s);
               for (auto n : side->node_index_range())
                 {
                   const Node & node = side->node_ref(n);

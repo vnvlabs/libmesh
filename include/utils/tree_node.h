@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -129,13 +129,13 @@ public:
    * Prints the contents of the node_numbers vector if we
    * are active.
    */
-  void print_nodes(std::ostream & out=libMesh::out) const;
+  void print_nodes(std::ostream & out_stream=libMesh::out) const;
 
   /**
    * Prints the contents of the elements set if we
    * are active.
    */
-  void print_elements(std::ostream & out=libMesh::out) const;
+  void print_elements(std::ostream & out_stream=libMesh::out) const;
 
   /**
    * Transforms node numbers to element pointers.

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -21,11 +21,12 @@
 #include "libmesh/boundary_info.h"
 #include "libmesh/elem.h"
 #include "libmesh/libmesh_logging.h"
-#include "libmesh/metis_partitioner.h"
+#include "libmesh/partitioner.h"
 #include "libmesh/replicated_mesh.h"
 #include "libmesh/utility.h"
 #include "libmesh/parallel.h"
 #include "libmesh/point.h"
+#include "libmesh/string_to_enum.h"
 #ifdef LIBMESH_HAVE_NANOFLANN
 #include "libmesh/nanoflann.hpp"
 #endif
@@ -92,7 +93,13 @@ ReplicatedMesh::ReplicatedMesh (const Parallel::Communicator & comm_in,
   // here in the constructor.
   _next_unique_id = 0;
 #endif
-  _partitioner = libmesh_make_unique<MetisPartitioner>();
+
+  const std::string default_partitioner = "metis";
+  const std::string my_partitioner =
+    libMesh::command_line_value("--default-partitioner",
+                                default_partitioner);
+  _partitioner = Partitioner::build
+    (Utility::string_to_enum<PartitionerType>(my_partitioner));
 }
 
 
@@ -697,24 +704,27 @@ void ReplicatedMesh::clear ()
   MeshBase::clear();
 
   // Clear our elements and nodes
-  // There is no need to remove the elements from
+  // There is no need to remove them from
   // the BoundaryInfo data structure since we
   // already cleared it.
-  for (auto & elem : _elements)
-    delete elem;
+  this->clear_elems();
 
-  _n_elem = 0;
-  _elements.clear();
-
-  // clear the nodes data structure
-  // There is no need to remove the nodes from
-  // the BoundaryInfo data structure since we
-  // already cleared it.
   for (auto & node : _nodes)
     delete node;
 
   _n_nodes = 0;
   _nodes.clear();
+}
+
+
+
+void ReplicatedMesh::clear_elems ()
+{
+  for (auto & elem : _elements)
+    delete elem;
+
+  _n_elem = 0;
+  _elements.clear();
 }
 
 
@@ -977,7 +987,7 @@ void ReplicatedMesh::stitching_helper (const ReplicatedMesh * other_mesh,
   std::map<dof_id_type, std::vector<dof_id_type>> node_to_elems_map;
 
   typedef dof_id_type                     key_type;
-  typedef std::pair<Elem *, unsigned char> val_type;
+  typedef std::pair<const Elem *, unsigned char> val_type;
   typedef std::pair<key_type, val_type>   key_val_pair;
   typedef std::unordered_multimap<key_type, val_type> map_type;
   // Mapping between all side keys in this mesh and elements+side numbers relevant to the boundary in this mesh as well.
@@ -1004,7 +1014,7 @@ void ReplicatedMesh::stitching_helper (const ReplicatedMesh * other_mesh,
       std::set<dof_id_type> this_boundary_node_ids, other_boundary_node_ids;
 
       // Pull objects out of the loop to reduce heap operations
-      std::unique_ptr<Elem> side;
+      std::unique_ptr<const Elem> side;
 
       {
         // Make temporary fixed-size arrays for loop
@@ -1107,7 +1117,7 @@ void ReplicatedMesh::stitching_helper (const ReplicatedMesh * other_mesh,
 
                               if (std::find(bc_ids.begin(), bc_ids.end(), id_array[i]) != bc_ids.end())
                                 {
-                                  std::unique_ptr<Elem> edge (el->build_edge_ptr(edge_id));
+                                  std::unique_ptr<const Elem> edge (el->build_edge_ptr(edge_id));
                                   for (auto & n : edge->node_ref_range())
                                     set_array[i]->insert( n.id() );
 
@@ -1165,7 +1175,8 @@ void ReplicatedMesh::stitching_helper (const ReplicatedMesh * other_mesh,
         if (use_binary_search)
         {
 #ifdef LIBMESH_HAVE_NANOFLANN
-          typedef nanoflann::KDTreeSingleIndexAdaptor<nanoflann::L2_Simple_Adaptor<Real, VectorOfNodesAdaptor>, VectorOfNodesAdaptor, 3> kd_tree_t;
+          typedef nanoflann::KDTreeSingleIndexAdaptor<nanoflann::L2_Simple_Adaptor<Real, VectorOfNodesAdaptor>,
+            VectorOfNodesAdaptor, 3, std::size_t> kd_tree_t;
 
           // Create the dataset needed to build the kd tree with nanoflann
           std::vector<std::pair<Point, dof_id_type>> this_mesh_nodes(this_boundary_node_ids.size());
@@ -1183,18 +1194,18 @@ void ReplicatedMesh::stitching_helper (const ReplicatedMesh * other_mesh,
           this_kd_tree.buildIndex();
 
           // Storage for nearest neighbor in the loop below
-          std::vector<size_t> ret_index(1);
-          std::vector<Real> ret_dist_sqr(1);
+          std::size_t ret_index;
+          Real ret_dist_sqr;
 
           // Loop over other mesh. For each node, find its nearest neighbor in this mesh, and fill in the maps.
           for (auto node : other_boundary_node_ids)
           {
             const Real query_pt[] = {other_mesh->point(node)(0), other_mesh->point(node)(1), other_mesh->point(node)(2)};
-            this_kd_tree.knnSearch(&query_pt[0], 1, &ret_index[0], &ret_dist_sqr[0]);
-            if (ret_dist_sqr[0] < TOLERANCE*TOLERANCE)
+            this_kd_tree.knnSearch(&query_pt[0], 1, &ret_index, &ret_dist_sqr);
+            if (ret_dist_sqr < TOLERANCE*TOLERANCE)
             {
-              node_to_node_map[this_mesh_nodes[ret_index[0]].second] = node;
-              other_to_this_node_map[node] = this_mesh_nodes[ret_index[0]].second;
+              node_to_node_map[this_mesh_nodes[ret_index].second] = node;
+              other_to_this_node_map[node] = this_mesh_nodes[ret_index].second;
             }
           }
 
@@ -1430,7 +1441,7 @@ void ReplicatedMesh::stitching_helper (const ReplicatedMesh * other_mesh,
       LOG_SCOPE("stitch_meshes neighbor fixes", "ReplicatedMesh");
 
       // Pull objects out of the loop to reduce heap operations
-      std::unique_ptr<Elem> my_side, their_side;
+      std::unique_ptr<const Elem> my_side, their_side;
 
       std::set<dof_id_type> fixed_elems;
       for (const auto & pr : node_to_elems_map)
@@ -1459,7 +1470,7 @@ void ReplicatedMesh::stitching_helper (const ReplicatedMesh * other_mesh,
                               while (bounds.first != bounds.second)
                                 {
                                   // Get the potential element
-                                  Elem * neighbor = bounds.first->second.first;
+                                  Elem * neighbor = const_cast<Elem *>(bounds.first->second.first);
 
                                   // Get the side for the neighboring element
                                   const unsigned int ns = bounds.first->second.second;
@@ -1565,7 +1576,7 @@ ReplicatedMesh::get_disconnected_subdomains(std::vector<subdomain_id_type> * sub
 
   // a stack for visiting elements, make its capacity sufficiently large to avoid
   // memory allocation and deallocation when the vector size changes
-  std::vector<Elem *> list;
+  std::vector<const Elem *> list;
   list.reserve(n_elem());
 
   // counter of visited elements
@@ -1587,13 +1598,13 @@ ReplicatedMesh::get_disconnected_subdomains(std::vector<subdomain_id_type> * sub
     while (list.size() > 0)
     {
       // pop up an element
-      Elem * elem = list.back(); list.pop_back(); ++visited;
+      const Elem * elem = list.back(); list.pop_back(); ++visited;
 
       min_id = std::min(elem->id(), min_id);
 
       for (auto s : elem->side_index_range())
       {
-        Elem * neighbor = elem->neighbor_ptr(s);
+        const Elem * neighbor = elem->neighbor_ptr(s);
         if (neighbor != nullptr && (*subdomain_ids)[neighbor->id()] == Elem::invalid_subdomain_id)
         {
           // neighbor must be active

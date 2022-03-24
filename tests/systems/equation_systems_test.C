@@ -33,7 +33,7 @@ Number bilinear_test (const Point& p,
 
 class EquationSystemsTest : public CppUnit::TestCase {
 public:
-  CPPUNIT_TEST_SUITE( EquationSystemsTest );
+  LIBMESH_CPPUNIT_TEST_SUITE( EquationSystemsTest );
 
   CPPUNIT_TEST( testConstruction );
   CPPUNIT_TEST( testAddSystem );
@@ -41,6 +41,7 @@ public:
   CPPUNIT_TEST( testPostInitAddSystem );
   CPPUNIT_TEST( testPostInitAddElem );
   CPPUNIT_TEST( testReinitWithNodeElem );
+  CPPUNIT_TEST( testBadVarNames );
 #if LIBMESH_DIM > 1
   CPPUNIT_TEST( testRefineThenReinitPreserveFlags );
 #ifdef LIBMESH_ENABLE_AMR // needs project_solution, even for reordering
@@ -64,12 +65,16 @@ public:
 
   void testConstruction()
   {
+    LOG_UNIT_TEST;
+
     Mesh mesh(*TestCommWorld);
     EquationSystems es(mesh);
   }
 
   void testAddSystem()
   {
+    LOG_UNIT_TEST;
+
     Mesh mesh(*TestCommWorld);
     EquationSystems es(mesh);
     /*System &sys = */es.add_system<System> ("SimpleSystem");
@@ -77,6 +82,8 @@ public:
 
   void testInit()
   {
+    LOG_UNIT_TEST;
+
     Mesh mesh(*TestCommWorld);
     EquationSystems es(mesh);
     /*System &sys = */es.add_system<System> ("SimpleSystem");
@@ -86,6 +93,8 @@ public:
 
   void testPostInitAddSystem()
   {
+    LOG_UNIT_TEST;
+
     Mesh mesh(*TestCommWorld);
     MeshTools::Generation::build_point(mesh);
     EquationSystems es(mesh);
@@ -97,6 +106,8 @@ public:
 
   void testPostInitAddRealSystem()
   {
+    LOG_UNIT_TEST;
+
     Mesh mesh(*TestCommWorld);
     MeshTools::Generation::build_point(mesh);
     EquationSystems es(mesh);
@@ -110,6 +121,8 @@ public:
 
   void testPostInitAddElem()
   {
+    LOG_UNIT_TEST;
+
     ReplicatedMesh mesh(*TestCommWorld);
 
     EquationSystems es(mesh);
@@ -128,8 +141,41 @@ public:
     es.reinit();
   }
 
+  void testBadVarNames()
+  {
+#ifdef LIBMESH_ENABLE_EXCEPTIONS
+    LOG_UNIT_TEST;
+
+    Mesh mesh(*TestCommWorld);
+    MeshTools::Generation::build_square(mesh, 1, 1);
+    EquationSystems es(mesh);
+    System &sys1 = es.add_system<System> ("SimpleSystem");
+    sys1.add_variable("u", FIRST, MONOMIAL_VEC);
+    es.init();
+
+    const FEType & fe_type = sys1.variable_type ("u");
+    std::vector<std::string> var_names;
+    std::set<std::string> system_names = {"SimpleSystem"};
+    es.build_variable_names(var_names, &fe_type);
+
+    System &sys2 = es.add_system<System> ("SecondSystem");
+    sys2.add_variable("u_x", FIRST);
+    sys2.add_variable("u_y", FIRST);
+    sys2.add_variable("u_z", FIRST);
+    es.reinit();
+
+    var_names.clear();
+    CPPUNIT_ASSERT_THROW_MESSAGE("Duplicate var names not detected",
+                                 es.build_variable_names(var_names,
+                                                         &fe_type),
+                                 libMesh::LogicError);
+#endif // LIBMESH_ENABLE_EXCEPTIONS
+  }
+
   void testReinitWithNodeElem()
   {
+    LOG_UNIT_TEST;
+
     ReplicatedMesh mesh(*TestCommWorld);
 
     MeshTools::Generation::build_line (mesh, 10, 0., 1., EDGE2);
@@ -148,6 +194,8 @@ public:
   {
     // This test requires AMR support since it sets refinement flags.
 #ifdef LIBMESH_ENABLE_AMR
+    LOG_UNIT_TEST;
+
     Mesh mesh(*TestCommWorld);
     mesh.allow_renumbering(false);
     EquationSystems es(mesh);
@@ -185,6 +233,8 @@ public:
 
   void testRepartitionThenReinit()
   {
+    LOG_UNIT_TEST;
+
     Mesh mesh(*TestCommWorld);
     mesh.allow_renumbering(false);
     EquationSystems es(mesh);
@@ -214,6 +264,8 @@ public:
 
   void testDisableDefaultGhosting()
   {
+    LOG_UNIT_TEST;
+
     Mesh mesh(*TestCommWorld);
     EquationSystems es(mesh);
 

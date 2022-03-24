@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -29,12 +29,6 @@ void NoSolutionHistory::store(bool /* is_adjoint_solve */, Real /* time */)
 void NoSolutionHistory::retrieve(bool /* is_adjoint_solve */, Real /* time */)
 {
   // Nothing was stored, so nothing can be retrieved
-  libmesh_not_implemented();
-}
-
-void NoSolutionHistory::erase(Real /* time */)
-{
-  // Nothing was stored, so nothing can be erased
   libmesh_not_implemented();
 }
 

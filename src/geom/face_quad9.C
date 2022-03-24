@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -46,7 +46,7 @@ const unsigned int Quad9::side_nodes_map[Quad9::num_sides][Quad9::nodes_per_side
 
 #ifdef LIBMESH_ENABLE_AMR
 
-const float Quad9::_embedding_matrix[Quad9::num_children][Quad9::num_nodes][Quad9::num_nodes] =
+const Real Quad9::_embedding_matrix[Quad9::num_children][Quad9::num_nodes][Quad9::num_nodes] =
   {
     // embedding matrix for child 0
     {
@@ -161,19 +161,19 @@ bool Quad9::has_affine_map() const
 {
   // make sure corners form a parallelogram
   Point v = this->point(1) - this->point(0);
-  if (!v.relative_fuzzy_equals(this->point(2) - this->point(3)))
+  if (!v.relative_fuzzy_equals(this->point(2) - this->point(3), affine_tol))
     return false;
   // make sure "horizontal" sides are straight
   v /= 2;
-  if (!v.relative_fuzzy_equals(this->point(4) - this->point(0)) ||
-      !v.relative_fuzzy_equals(this->point(6) - this->point(3)))
+  if (!v.relative_fuzzy_equals(this->point(4) - this->point(0), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(6) - this->point(3), affine_tol))
     return false;
   // make sure "vertical" sides are straight
   // and the center node is centered
   v = (this->point(3) - this->point(0))/2;
-  if (!v.relative_fuzzy_equals(this->point(7) - this->point(0)) ||
-      !v.relative_fuzzy_equals(this->point(5) - this->point(1)) ||
-      !v.relative_fuzzy_equals(this->point(8) - this->point(4)))
+  if (!v.relative_fuzzy_equals(this->point(7) - this->point(0), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(5) - this->point(1), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(8) - this->point(4), affine_tol))
     return false;
   return true;
 }
@@ -516,6 +516,7 @@ void Quad9::permute(unsigned int perm_num)
     {
       swap4nodes(0,1,2,3);
       swap4nodes(4,5,6,7);
+      swap4neighbors(0,1,2,3);
     }
 }
 
@@ -524,6 +525,13 @@ unsigned int Quad9::center_node_on_side(const unsigned short side) const
 {
   libmesh_assert_less (side, Quad9::num_sides);
   return side + 4;
+}
+
+
+ElemType Quad9::side_type (const unsigned int libmesh_dbg_var(s)) const
+{
+  libmesh_assert_less (s, 4);
+  return EDGE3;
 }
 
 

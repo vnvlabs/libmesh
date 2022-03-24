@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -67,7 +67,7 @@ std::unique_ptr<FETransformationBase<OutputShape>> FETransformationBase<OutputSh
     }
 }
 
-template class FETransformationBase<Real>;
-template class FETransformationBase<RealGradient>;
+template class LIBMESH_EXPORT FETransformationBase<Real>;
+template class LIBMESH_EXPORT FETransformationBase<RealGradient>;
 
 } // namespace libMesh

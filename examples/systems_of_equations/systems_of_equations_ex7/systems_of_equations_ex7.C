@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -522,6 +522,9 @@ int main (int argc, char ** argv)
 #endif
 
   GetPot infile("systems_of_equations_ex7.in");
+
+  infile.parse_command_line(argc,argv);
+
   const Real x_length = infile("x_length", 0.);
   const Real y_length = infile("y_length", 0.);
   const Real z_length = infile("z_length", 0.);

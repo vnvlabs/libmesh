@@ -7,13 +7,12 @@ INJECTION_EXECUTABLE(LIBMESH)
 static const char* libmesh_vnv_schema = "{\"type\": \"object\", \"required\":[]}";
 
 /**
- * VnV allows users to set options in hypre using the input file. This callback
- * registers the json schema for the available options with the toolkit and defines
+ * Welcome to libmesh. 
  *
- * TODO: Add options to the schema and parse them in this function.
+ *
  */ 
 INJECTION_OPTIONS(LIBMESH, libmesh_vnv_schema) {
-
+    return nullptr;
 }
 
 INJECTION_SUBPACKAGE(LIBMESH,PETSC)

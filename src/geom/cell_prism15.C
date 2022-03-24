@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -59,19 +59,6 @@ const unsigned int Prism15::edge_nodes_map[Prism15::num_edges][Prism15::nodes_pe
     {3, 4, 12}, // Edge 6
     {4, 5, 13}, // Edge 7
     {3, 5, 14}  // Edge 8
-  };
-
-const unsigned int Prism15::edge_sides_map[Prism15::num_edges][2] =
-  {
-    {0, 1}, // Edge 0
-    {0, 2}, // Edge 1
-    {0, 3}, // Edge 2
-    {1, 3}, // Edge 3
-    {1, 2}, // Edge 4
-    {2, 3}, // Edge 5
-    {1, 4}, // Edge 6
-    {2, 4}, // Edge 7
-    {3, 4}  // Edge 8
   };
 
 // ------------------------------------------------------------
@@ -135,26 +122,26 @@ bool Prism15::has_affine_map() const
 {
   // Make sure z edges are affine
   Point v = this->point(3) - this->point(0);
-  if (!v.relative_fuzzy_equals(this->point(4) - this->point(1)) ||
-      !v.relative_fuzzy_equals(this->point(5) - this->point(2)))
+  if (!v.relative_fuzzy_equals(this->point(4) - this->point(1), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(5) - this->point(2), affine_tol))
     return false;
   // Make sure edges are straight
   v /= 2;
-  if (!v.relative_fuzzy_equals(this->point(9) - this->point(0)) ||
-      !v.relative_fuzzy_equals(this->point(10) - this->point(1)) ||
-      !v.relative_fuzzy_equals(this->point(11) - this->point(2)))
+  if (!v.relative_fuzzy_equals(this->point(9) - this->point(0), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(10) - this->point(1), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(11) - this->point(2), affine_tol))
     return false;
   v = (this->point(1) - this->point(0))/2;
-  if (!v.relative_fuzzy_equals(this->point(6) - this->point(0)) ||
-      !v.relative_fuzzy_equals(this->point(12) - this->point(3)))
+  if (!v.relative_fuzzy_equals(this->point(6) - this->point(0), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(12) - this->point(3), affine_tol))
     return false;
   v = (this->point(2) - this->point(0))/2;
-  if (!v.relative_fuzzy_equals(this->point(8) - this->point(0)) ||
-      !v.relative_fuzzy_equals(this->point(14) - this->point(3)))
+  if (!v.relative_fuzzy_equals(this->point(8) - this->point(0), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(14) - this->point(3), affine_tol))
     return false;
   v = (this->point(2) - this->point(1))/2;
-  if (!v.relative_fuzzy_equals(this->point(7) - this->point(1)) ||
-      !v.relative_fuzzy_equals(this->point(13) - this->point(4)))
+  if (!v.relative_fuzzy_equals(this->point(7) - this->point(1), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(13) - this->point(4), affine_tol))
     return false;
   return true;
 }
@@ -262,6 +249,7 @@ std::unique_ptr<Elem> Prism15::build_side_ptr (const unsigned int i,
   face->set_interior_parent(this);
 
   face->subdomain_id() = this->subdomain_id();
+  face->set_mapping_type(this->mapping_type());
 #ifdef LIBMESH_ENABLE_AMR
   face->set_p_level(this->p_level());
 #endif
@@ -305,6 +293,7 @@ void Prism15::build_side_ptr (std::unique_ptr<Elem> & side,
     }
 
   side->subdomain_id() = this->subdomain_id();
+  side->set_mapping_type(this->mapping_type());
 
   // Set the nodes
   for (auto n : side->node_index_range())
@@ -573,7 +562,7 @@ Real Prism15::volume () const
 
 #ifdef LIBMESH_ENABLE_AMR
 
-const float Prism15::_embedding_matrix[Prism15::num_children][Prism15::num_nodes][Prism15::num_nodes] =
+const Real Prism15::_embedding_matrix[Prism15::num_children][Prism15::num_nodes][Prism15::num_nodes] =
   {
     // Embedding matrix for child 0
     {
@@ -753,6 +742,7 @@ Prism15::permute(unsigned int perm_num)
       swap3nodes(6,7,8);
       swap3nodes(9,10,11);
       swap3nodes(12,13,14);
+      swap3neighbors(1,2,3);
     }
 
   switch (side) {
@@ -766,6 +756,8 @@ Prism15::permute(unsigned int perm_num)
     swap2nodes(9,10);
     swap2nodes(7,14);
     swap2nodes(8,13);
+    swap2neighbors(0,4);
+    swap2neighbors(2,3);
     break;
   default:
     libmesh_error();
@@ -773,5 +765,14 @@ Prism15::permute(unsigned int perm_num)
 
 }
 
+
+ElemType
+Prism15::side_type (const unsigned int s) const
+{
+  libmesh_assert_less (s, 5);
+  if (s == 0 || s == 4)
+    return TRI6;
+  return QUAD8;
+}
 
 } // namespace libMesh

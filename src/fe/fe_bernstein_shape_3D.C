@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -59,6 +59,7 @@ Real FE<3,BERNSTEIN>::shape(const Elem * elem,
             // Bernstein shape functions on the tetrahedron.
           case TET4:
           case TET10:
+          case TET14:
             {
               libmesh_assert_less (i, 4);
 
@@ -121,6 +122,7 @@ Real FE<3,BERNSTEIN>::shape(const Elem * elem,
 
             // Bernstein shape functions on the tetrahedron.
           case TET10:
+          case TET14:
             {
               libmesh_assert_less (i, 10);
 
@@ -1418,50 +1420,10 @@ Real FE<3,BERNSTEIN>::shape_deriv(const Elem * elem,
             // Bernstein shape functions on the tetrahedron.
           case TET4:
           case TET10:
+          case TET14:
             {
-              // I have been lazy here and am using finite differences
-              // to compute the derivatives!
-              const Real eps = 1.e-4;
-
-              libmesh_assert_less (i, 4);
-
-
-              switch (j)
-                {
-                  //  d()/dxi
-                case 0:
-                  {
-                    const Point pp(p(0)+eps, p(1), p(2));
-                    const Point pm(p(0)-eps, p(1), p(2));
-
-                    return (FE<3,BERNSTEIN>::shape(elem, order, i, pp) -
-                            FE<3,BERNSTEIN>::shape(elem, order, i, pm))/2./eps;
-                  }
-
-                  // d()/deta
-                case 1:
-                  {
-                    const Point pp(p(0), p(1)+eps, p(2));
-                    const Point pm(p(0), p(1)-eps, p(2));
-
-                    return (FE<3,BERNSTEIN>::shape(elem, order, i, pp) -
-                            FE<3,BERNSTEIN>::shape(elem, order, i, pm))/2./eps;
-                  }
-                  // d()/dzeta
-                case 2:
-                  {
-                    const Point pp(p(0), p(1), p(2)+eps);
-                    const Point pm(p(0), p(1), p(2)-eps);
-
-                    return (FE<3,BERNSTEIN>::shape(elem, order, i, pp) -
-                            FE<3,BERNSTEIN>::shape(elem, order, i, pm))/2./eps;
-                  }
-                default:
-                  libmesh_error_msg("Invalid derivative index j = " << j);
-                }
+              return fe_fdm_deriv(elem, order, i, j, p, add_p_level, FE<3,BERNSTEIN>::shape);
             }
-
-
 
 
             // Bernstein shape functions on the hexahedral.
@@ -1523,47 +1485,9 @@ Real FE<3,BERNSTEIN>::shape_deriv(const Elem * elem,
           {
             // Bernstein shape functions on the tetrahedron.
           case TET10:
+          case TET14:
             {
-              // I have been lazy here and am using finite differences
-              // to compute the derivatives!
-              const Real eps = 1.e-4;
-
-              libmesh_assert_less (i, 10);
-
-
-              switch (j)
-                {
-                  //  d()/dxi
-                case 0:
-                  {
-                    const Point pp(p(0)+eps, p(1), p(2));
-                    const Point pm(p(0)-eps, p(1), p(2));
-
-                    return (FE<3,BERNSTEIN>::shape(elem, order, i, pp) -
-                            FE<3,BERNSTEIN>::shape(elem, order, i, pm))/2./eps;
-                  }
-
-                  // d()/deta
-                case 1:
-                  {
-                    const Point pp(p(0), p(1)+eps, p(2));
-                    const Point pm(p(0), p(1)-eps, p(2));
-
-                    return (FE<3,BERNSTEIN>::shape(elem, order, i, pp) -
-                            FE<3,BERNSTEIN>::shape(elem, order, i, pm))/2./eps;
-                  }
-                  // d()/dzeta
-                case 2:
-                  {
-                    const Point pp(p(0), p(1), p(2)+eps);
-                    const Point pm(p(0), p(1), p(2)-eps);
-
-                    return (FE<3,BERNSTEIN>::shape(elem, order, i, pp) -
-                            FE<3,BERNSTEIN>::shape(elem, order, i, pm))/2./eps;
-                  }
-                default:
-                  libmesh_error_msg("Invalid derivative index j = " << j);
-                }
+              return fe_fdm_deriv(elem, order, i, j, p, add_p_level, FE<3,BERNSTEIN>::shape);
             }
 
             // Bernstein shape functions on the hexahedral.
@@ -1808,46 +1732,7 @@ Real FE<3,BERNSTEIN>::shape_deriv(const Elem * elem,
             // Bernstein shape functions on the hexahedral.
           case HEX27:
             {
-              // I have been lazy here and am using finite differences
-              // to compute the derivatives!
-              const Real eps = 1.e-4;
-
-              libmesh_assert_less (i, 64);
-
-              switch (j)
-                {
-                  //  d()/dxi
-                case 0:
-                  {
-                    const Point pp(p(0)+eps, p(1), p(2));
-                    const Point pm(p(0)-eps, p(1), p(2));
-
-                    return (FE<3,BERNSTEIN>::shape(elem, order, i, pp) -
-                            FE<3,BERNSTEIN>::shape(elem, order, i, pm))/2./eps;
-                  }
-
-                  // d()/deta
-                case 1:
-                  {
-                    const Point pp(p(0), p(1)+eps, p(2));
-                    const Point pm(p(0), p(1)-eps, p(2));
-
-                    return (FE<3,BERNSTEIN>::shape(elem, order, i, pp) -
-                            FE<3,BERNSTEIN>::shape(elem, order, i, pm))/2./eps;
-                  }
-                  // d()/dzeta
-                case 2:
-                  {
-                    const Point pp(p(0), p(1), p(2)+eps);
-                    const Point pm(p(0), p(1), p(2)-eps);
-
-                    return (FE<3,BERNSTEIN>::shape(elem, order, i, pp) -
-                            FE<3,BERNSTEIN>::shape(elem, order, i, pm))/2./eps;
-                  }
-                default:
-                  libmesh_error_msg("Invalid derivative index j = " << j);
-                }
-
+              return fe_fdm_deriv(elem, order, i, j, p, add_p_level, FE<3,BERNSTEIN>::shape);
             }
 
             //       // Compute hex shape functions as a tensor-product
@@ -2383,43 +2268,7 @@ Real FE<3,BERNSTEIN>::shape_deriv(const Elem * elem,
             // Bernstein shape functions derivatives on the hexahedral.
           case HEX27:
             {
-              const Real eps = 1.e-4;
-
-              libmesh_assert_less (i, 125);
-
-              switch (j)
-                {
-                  //  d()/dxi
-                case 0:
-                  {
-                    const Point pp(p(0)+eps, p(1), p(2));
-                    const Point pm(p(0)-eps, p(1), p(2));
-
-                    return (FE<3,BERNSTEIN>::shape(elem, order, i, pp) -
-                            FE<3,BERNSTEIN>::shape(elem, order, i, pm))/2./eps;
-                  }
-
-                  // d()/deta
-                case 1:
-                  {
-                    const Point pp(p(0), p(1)+eps, p(2));
-                    const Point pm(p(0), p(1)-eps, p(2));
-
-                    return (FE<3,BERNSTEIN>::shape(elem, order, i, pp) -
-                            FE<3,BERNSTEIN>::shape(elem, order, i, pm))/2./eps;
-                  }
-                  // d()/dzeta
-                case 2:
-                  {
-                    const Point pp(p(0), p(1), p(2)+eps);
-                    const Point pm(p(0), p(1), p(2)-eps);
-
-                    return (FE<3,BERNSTEIN>::shape(elem, order, i, pp) -
-                            FE<3,BERNSTEIN>::shape(elem, order, i, pm))/2./eps;
-                  }
-                default:
-                  libmesh_error_msg("Invalid derivative index j = " << j);
-                }
+              return fe_fdm_deriv(elem, order, i, j, p, add_p_level, FE<3,BERNSTEIN>::shape);
             }
 
             //       // Compute hex shape functions as a tensor-product
@@ -2993,92 +2842,8 @@ Real FE<3,BERNSTEIN>::shape_second_deriv(const Elem * elem,
                                          const Point & p,
                                          const bool add_p_level)
 {
-
-#if LIBMESH_DIM == 3
-  libmesh_assert(elem);
-
-  const Order totalorder =
-    static_cast<Order>(order + add_p_level * elem->p_level());
-
-  libmesh_assert_less (j, 6);
-
-  {
-    // I have been lazy here and am using finite differences
-    // to compute the derivatives!
-    const Real eps = 1.e-4;
-
-
-    switch (j)
-      {
-        //  d^2()/dxi^2
-      case 0:
-        {
-          const Point pp(p(0)+eps, p(1), p(2));
-          const Point pm(p(0)-eps, p(1), p(2));
-
-          return (FE<3,BERNSTEIN>::shape_deriv(elem, totalorder, i, 0, pp) -
-                  FE<3,BERNSTEIN>::shape_deriv(elem, totalorder, i, 0, pm))/2./eps;
-        }
-
-        // d^2()/dxideta
-      case 1:
-        {
-          const Point pp(p(0), p(1)+eps, p(2));
-          const Point pm(p(0), p(1)-eps, p(2));
-
-          return (FE<3,BERNSTEIN>::shape_deriv(elem, totalorder, i, 0, pp) -
-                  FE<3,BERNSTEIN>::shape_deriv(elem, totalorder, i, 0, pm))/2./eps;
-        }
-
-        // d^2()/deta^2
-      case 2:
-        {
-          const Point pp(p(0), p(1)+eps, p(2));
-          const Point pm(p(0), p(1)-eps, p(2));
-
-          return (FE<3,BERNSTEIN>::shape_deriv(elem, totalorder, i, 1, pp) -
-                  FE<3,BERNSTEIN>::shape_deriv(elem, totalorder, i, 1, pm))/2./eps;
-        }
-
-        // d^2()/dxidzeta
-      case 3:
-        {
-          const Point pp(p(0), p(1), p(2)+eps);
-          const Point pm(p(0), p(1), p(2)-eps);
-
-          return (FE<3,BERNSTEIN>::shape_deriv(elem, totalorder, i, 0, pp) -
-                  FE<3,BERNSTEIN>::shape_deriv(elem, totalorder, i, 0, pm))/2./eps;
-        }                  // d^2()/deta^2
-
-        // d^2()/detadzeta
-      case 4:
-        {
-          const Point pp(p(0), p(1), p(2)+eps);
-          const Point pm(p(0), p(1), p(2)-eps);
-
-          return (FE<3,BERNSTEIN>::shape_deriv(elem, totalorder, i, 1, pp) -
-                  FE<3,BERNSTEIN>::shape_deriv(elem, totalorder, i, 1, pm))/2./eps;
-        }
-
-        // d^2()/dzeta^2
-      case 5:
-        {
-          const Point pp(p(0), p(1), p(2)+eps);
-          const Point pm(p(0), p(1), p(2)-eps);
-
-          return (FE<3,BERNSTEIN>::shape_deriv(elem, totalorder, i, 2, pp) -
-                  FE<3,BERNSTEIN>::shape_deriv(elem, totalorder, i, 2, pm))/2./eps;
-        }
-
-      default:
-        libmesh_error_msg("Invalid derivative index j = " << j);
-      }
-  }
-
-#else // LIBMESH_DIM != 3
-  libmesh_ignore(elem, order, i, j, p, add_p_level);
-  libmesh_not_implemented();
-#endif
+  return fe_fdm_second_deriv(elem, order, i, j, p, add_p_level,
+                             FE<3,BERNSTEIN>::shape_deriv);
 }
 
 

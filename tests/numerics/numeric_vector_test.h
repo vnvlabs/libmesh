@@ -29,6 +29,8 @@ class NumericVectorTest : public CppUnit::TestCase {
 protected:
   libMesh::Parallel::Communicator *my_comm;
 
+  std::string libmesh_suite_name;
+
 public:
   void setUp()
   {
@@ -66,6 +68,28 @@ public:
 
       for (libMesh::dof_id_type n=first; n != last; n++)
         v.set (n, static_cast<libMesh::Number>(n));
+      v.close();
+      for (libMesh::dof_id_type n=first; n != last; n++)
+        v.add (n, static_cast<libMesh::Number>(n));
+      v.close();
+
+      if (!to_one)
+        v.localize(l);
+      else
+        v.localize_to_one(l,root_pid);
+
+      if (!to_one || my_comm->rank() == root_pid)
+        // Yes I really mean v.size()
+        for (libMesh::dof_id_type i=0; i<v.size(); i++)
+          LIBMESH_ASSERT_FP_EQUAL(2.*libMesh::libmesh_real(i),
+                                  libMesh::libmesh_real(l[i]),
+                                  libMesh::TOLERANCE*libMesh::TOLERANCE);
+
+      for (libMesh::dof_id_type n=first; n != last; n++)
+      {
+        const auto value = static_cast<libMesh::Number>(n);
+        v.insert (&value, std::vector<libMesh::numeric_index_type>({n}));
+      }
       v.close();
 
       if (!to_one)
@@ -137,31 +161,43 @@ public:
 
   void testLocalize()
   {
+    LOG_UNIT_TEST;
+
     Localize<DerivedClass,DerivedClass>();
   }
 
   void testLocalizeBase()
   {
+    LOG_UNIT_TEST;
+
     Localize<libMesh::NumericVector<libMesh::Number>,DerivedClass>();
   }
 
   void testLocalizeToOne()
   {
+    LOG_UNIT_TEST;
+
     Localize<DerivedClass,DerivedClass >(true);
   }
 
   void testLocalizeToOneBase()
   {
+    LOG_UNIT_TEST;
+
     Localize<libMesh::NumericVector<libMesh::Number>,DerivedClass>(true);
   }
 
   void testLocalizeIndices()
   {
+    LOG_UNIT_TEST;
+
     LocalizeIndices<DerivedClass,DerivedClass >();
   }
 
   void testLocalizeIndicesBase()
   {
+    LOG_UNIT_TEST;
+
     LocalizeIndices<libMesh::NumericVector<libMesh::Number>,DerivedClass>();
   }
 };

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -366,9 +366,7 @@ void MeshTools::find_boundary_nodes (const MeshBase & mesh,
     for (auto s : elem->side_index_range())
       if (elem->neighbor_ptr(s) == nullptr) // on the boundary
         {
-          std::unique_ptr<const Elem> side = elem->build_side_ptr(s);
-
-          auto nodes_on_side = elem->nodes_on_side(s);
+          const auto nodes_on_side = elem->nodes_on_side(s);
 
           for (auto & node_id : nodes_on_side)
             on_boundary[node_id] = true;
@@ -1169,6 +1167,41 @@ void MeshTools::find_hanging_nodes_and_parents(const MeshBase & mesh,
                 }
             }
         }
+}
+
+
+
+void MeshTools::clear_spline_nodes(MeshBase & mesh)
+{
+  std::vector<Elem *> nodeelem_to_delete;
+
+  for (auto & elem : mesh.element_ptr_range())
+    if (elem->type() == NODEELEM &&
+        elem->mapping_type() == RATIONAL_BERNSTEIN_MAP)
+      nodeelem_to_delete.push_back(elem);
+
+  auto & constraint_rows = mesh.get_constraint_rows();
+
+  // All our constraint_rows ought to be for spline constraints we're
+  // about to get rid of.
+#ifndef NDEBUG
+  for (auto & node_row : constraint_rows)
+    for (auto pr : node_row.second)
+      {
+        const Elem * elem = pr.first.first;
+        libmesh_assert(elem->type() == NODEELEM);
+        libmesh_assert(elem->mapping_type() == RATIONAL_BERNSTEIN_MAP);
+      }
+#endif
+
+  constraint_rows.clear();
+
+  for (Elem * elem : nodeelem_to_delete)
+    {
+      Node * node = elem->node_ptr(0);
+      mesh.delete_elem(elem);
+      mesh.delete_node(node);
+    }
 }
 
 
@@ -2389,10 +2422,8 @@ void MeshTools::correct_node_proc_ids (MeshBase & mesh)
     (processor_id_type,
      const std::vector<std::pair<dof_id_type, processor_id_type>> & data)
     {
-      for (auto & p : data)
+      for (const auto & [id, pid] : data)
         {
-          const dof_id_type id = p.first;
-          const processor_id_type pid = p.second;
           const proc_id_map_type::iterator it = new_proc_ids.find(id);
           if (it == new_proc_ids.end())
             new_proc_ids.emplace(id, pid);

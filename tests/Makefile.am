@@ -9,11 +9,11 @@ AM_LDFLAGS   = $(libmesh_LDFLAGS)
 LIBS         = $(libmesh_optional_LIBS) $(CPPUNIT_LIBS)
 
 # We might have turned on -Werror and/or paranoid warnings
-CXXFLAGS_DBG += $(ANY_WERROR_FLAG) $(ANY_PARANOID_FLAGS)
-CXXFLAGS_DEVEL += $(ANY_WERROR_FLAG) $(ANY_PARANOID_FLAGS)
-CXXFLAGS_OPROF += $(ANY_WERROR_FLAG) $(ANY_PARANOID_FLAGS)
-CXXFLAGS_OPT += $(ANY_WERROR_FLAG) $(ANY_PARANOID_FLAGS)
-CXXFLAGS_PROF += $(ANY_WERROR_FLAG) $(ANY_PARANOID_FLAGS)
+CXXFLAGS_DBG += $(ACSM_ANY_WERROR_FLAG) $(ACSM_ANY_PARANOID_FLAGS)
+CXXFLAGS_DEVEL += $(ACSM_ANY_WERROR_FLAG) $(ACSM_ANY_PARANOID_FLAGS)
+CXXFLAGS_OPROF += $(ACSM_ANY_WERROR_FLAG) $(ACSM_ANY_PARANOID_FLAGS)
+CXXFLAGS_OPT += $(ACSM_ANY_WERROR_FLAG) $(ACSM_ANY_PARANOID_FLAGS)
+CXXFLAGS_PROF += $(ACSM_ANY_WERROR_FLAG) $(ACSM_ANY_PARANOID_FLAGS)
 
 unit_tests_sources = \
   driver.C \
@@ -26,6 +26,7 @@ unit_tests_sources = \
   base/getpot_test.C \
   base/point_neighbor_coupling_test.C \
   base/overlapping_coupling_test.C \
+  base/multi_evaluable_pred_test.C \
   fe/fe_bernstein_test.C \
   fe/fe_clough_test.C \
   fe/fe_hermite_test.C \
@@ -51,6 +52,7 @@ unit_tests_sources = \
   geom/side_test.C \
   geom/volume_test.C \
   geom/which_node_am_i_test.C \
+  mesh/all_second_order.C \
   mesh/all_tri.C \
   mesh/distort.C \
   mesh/boundary_mesh.C \
@@ -60,22 +62,24 @@ unit_tests_sources = \
   mesh/contains_point.C \
   mesh/extra_integers.C \
   mesh/mesh_assign.C \
+  mesh/mesh_collection.C \
+  mesh/mesh_extruder.C \
+  mesh/mesh_function.C \
+  mesh/mesh_function_dfem.C \
   mesh/mesh_generation_test.C \
   mesh/mesh_input.C \
-  mesh/mesh_function.C \
   mesh/mesh_stitch.C \
+  mesh/mesh_triangulation.C \
   mesh/mixed_dim_mesh_test.C \
   mesh/nodal_neighbors.C \
-  mesh/mesh_extruder.C \
+  mesh/libmesh_poly2tri.C \
   mesh/slit_mesh_test.C \
   mesh/spatial_dimension_test.C \
   mesh/mapped_subdomain_partitioner_test.C \
-  mesh/mesh_function_dfem.C \
   mesh/write_sideset_data.C \
   mesh/write_nodeset_data.C \
   mesh/write_edgeset_data.C \
   mesh/write_vec_and_scalar.C \
-  mesh/all_second_order.C \
   numerics/composite_function_test.C \
   numerics/coupling_matrix_test.C \
   numerics/distributed_vector_test.C \
@@ -92,6 +96,7 @@ unit_tests_sources = \
   numerics/dense_matrix_test.C \
   numerics/petsc_matrix_test.C \
   numerics/diagonal_matrix_test.C \
+  numerics/lumped_mass_matrix_test.C \
   numerics/eigen_sparse_matrix_test.C \
   parallel/message_tag.C \
   parallel/packed_range_test.C \
@@ -125,6 +130,16 @@ unit_tests_sources = \
 datadir = $(install_dir)
 data = meshes/1_quad.bxt.gz \
        meshes/25_quad.bxt.gz \
+       meshes/BlockWithHole_Patch9.bxt.gz \
+       meshes/PlateWithHole_Patch8.bxt.gz \
+       meshes/PressurizedCyl3d_Patch1_8Elem.bxt.gz \
+       meshes/PressurizedCyl_Patch6_256Elem.bxt.gz \
+       meshes/Cube_With_Sidesets.e \
+       meshes/PlateWithHole_Patch8.e \
+       meshes/PressurizedCyl3d_Patch1_8Elem.e \
+       meshes/bad_64bit_elem_integers.e \
+       meshes/good_32bit_elem_integers.e \
+       meshes/mesh_assign_test_mesh.xda \
        meshes/shark_tooth_tri6.xda.gz
 
 unit_tests_sources += \
@@ -145,8 +160,8 @@ noinst_PROGRAMS = # empty, append below
 # configured to.
 if LIBMESH_ENABLE_CPPUNIT
 if LIBMESH_DBG_MODE
-if LIBMESH_ENABLE_GLIBCXX_DEBUGGING
-if LIBMESH_ENABLE_GLIBCXX_DEBUGGING_CPPUNIT
+if ACSM_ENABLE_GLIBCXX_DEBUGGING
+if ACSM_ENABLE_GLIBCXX_DEBUGGING_CPPUNIT
   check_PROGRAMS         += unit_tests-dbg
 else
   noinst_PROGRAMS        += unit_tests-dbg
@@ -262,7 +277,26 @@ CLEANFILES = cube_mesh.xda \
              output.dat \
              periodic.e \
              mesh.out.memory.moved.xda \
-             mesh.out.file.moved.xda
+             mesh.out.file.moved.xda \
+             repl_with_nodal_soln.nem.1.0 \
+             dist_with_elem_soln.e \
+             dist.e \
+             dist_with_nodal_soln.e \
+             dist_with_nodal_soln.nem.1.0 \
+             dist_with_elem_vec.e \
+             dist_with_single_elem.nem.1.0 \
+             dist_with_elem_soln.nem.1.0 \
+             rep.nem.1.0 \
+             repl_with_elem_soln.nem.1.0 \
+             repl_with_single_elem.nem.1.0 \
+             dist_with_elem_vec.nem.1.0 \
+             repl_with_elem_vec.nem.1.0 \
+             dist.nem.1.0 \
+             repl_with_elem_soln.e \
+             test_nemesis_read.nem.1.0 \
+             rep.e \
+             repl_with_nodal_soln.e \
+             repl_with_elem_vec.e
 
 # need to link any data files for VPATH builds
 if LIBMESH_VPATH_BUILD

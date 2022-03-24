@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -86,7 +86,7 @@ class spin_mutex
 {
 public:
   spin_mutex() { ulock = OS_UNFAIR_LOCK_INIT; }
-  ~spin_mutex() {}
+  ~spin_mutex() = default;
 
   void lock () { os_unfair_lock_lock(&ulock); }
   void unlock () { os_unfair_lock_unlock(&ulock); }
@@ -114,7 +114,7 @@ class spin_mutex
 {
 public:
   spin_mutex() : slock(0) {} // The convention is that the lock being zero is _unlocked_
-  ~spin_mutex() {}
+  ~spin_mutex() = default;
 
   void lock () { OSSpinLockLock(&slock); }
   void unlock () { OSSpinLockUnlock(&slock); }

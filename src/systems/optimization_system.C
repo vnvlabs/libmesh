@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -153,12 +153,10 @@ initialize_inequality_constraints_storage(const std::vector<std::set<numeric_ind
 
 void OptimizationSystem::solve ()
 {
-  START_LOG("solve()", "OptimizationSystem");
+  LOG_SCOPE("solve()", "OptimizationSystem");
 
   optimization_solver->init();
   optimization_solver->solve ();
-
-  STOP_LOG("solve()", "OptimizationSystem");
 
   this->update();
 }

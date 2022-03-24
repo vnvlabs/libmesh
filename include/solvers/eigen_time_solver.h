@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -158,7 +158,7 @@ public:
    * The linear solver tolerance to be used when solving the
    * eigenvalue problem. FIXME: need more info...
    */
-  Real tol;
+  double tol;
 
   /**
    * The maximum number of iterations allowed to solve the problem.

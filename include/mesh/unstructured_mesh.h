@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -137,7 +137,17 @@ public:
    * true (default), then \p Hex27 is built.  Otherwise, \p Hex20 is
    * built.  The same holds obviously for \p Quad4, \p Prism6, etc.
    */
-  virtual void all_second_order (const bool full_ordered=true) override;
+  virtual void all_second_order_range (const SimpleRange<element_iterator> & range,
+                                       const bool full_ordered=true) override;
+
+  /**
+   * Converts a (conforming, non-refined) mesh with linear elements
+   * into a mesh with "complete" order elements, i.e. elements which
+   * can store degrees of freedom on any vertex, edge, or face.  For
+   * example, a mesh consisting of \p Tet4 or \p Tet10 will be
+   * converted to a mesh with \p Tet14 etc.
+   */
+  virtual void all_complete_order () override;
 
   /**
    * Generates a new mesh containing all the elements which

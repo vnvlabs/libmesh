@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -109,6 +109,10 @@ std::ostream & operator<< (std::ostream & os, const PetscScalar in)
   return os;
 }
 
+/*
+
+// Whether these are necessary or not depends on gcc version!?
+
 #define LIBMESH_PETSCSCALAR_UNARY(funcname) \
 inline PetscScalar funcname \
   (const PetscScalar in) \
@@ -134,6 +138,7 @@ LIBMESH_PETSCSCALAR_UNARY(abs)
 LIBMESH_PETSCSCALAR_UNARY(fabs)
 LIBMESH_PETSCSCALAR_UNARY(ceil)
 LIBMESH_PETSCSCALAR_UNARY(floor)
+*/
 
 } // namespace std
 

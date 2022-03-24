@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -44,7 +44,7 @@ const unsigned int Tri3::side_nodes_map[Tri3::num_sides][Tri3::nodes_per_side] =
 
 #ifdef LIBMESH_ENABLE_AMR
 
-const float Tri3::_embedding_matrix[Tri3::num_children][Tri3::num_nodes][Tri3::num_nodes] =
+const Real Tri3::_embedding_matrix[Tri3::num_children][Tri3::num_nodes][Tri3::num_nodes] =
   {
     // embedding matrix for child 0
     {
@@ -187,6 +187,11 @@ void Tri3::connectivity(const unsigned int libmesh_dbg_var(sf),
 
 
 
+Point Tri3::true_centroid () const
+{
+  return Elem::vertex_average();
+}
+
 Real Tri3::volume () const
 {
   // 3-node triangles have the following formula for computing the area
@@ -265,8 +270,15 @@ void Tri3::permute(unsigned int perm_num)
   for (unsigned int i = 0; i != perm_num; ++i)
     {
       swap3nodes(0,1,2);
+      swap3neighbors(0,1,2);
     }
 }
 
+ElemType
+Tri3::side_type (const unsigned int libmesh_dbg_var(s)) const
+{
+  libmesh_assert_less (s, 3);
+  return EDGE2;
+}
 
 } // namespace libMesh

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -56,14 +56,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include <libmesh/ignore_warnings.h>
-namespace exII {
-extern "C" {
-#include "exodusII.h" // defines MAX_LINE_LENGTH, MAX_STR_LENGTH used later
-}
-}
-#include <libmesh/restore_warnings.h>
-
 namespace libMesh
 {
 
@@ -108,6 +100,12 @@ public:
    */
   ExodusII_IO_Helper & operator= (const ExodusII_IO_Helper &) = delete;
   ExodusII_IO_Helper & operator= (ExodusII_IO_Helper &&) = delete;
+
+  /**
+   * \returns The ExodusII API version, in "nodot" format; e.g. 822
+   * for 8.22
+   */
+  static int get_exodus_version();
 
   /**
    * \returns The current element type.
@@ -163,9 +161,15 @@ public:
   void read_node_num_map();
 
   /**
+   * Reads the optional \p bex_cv_blocks from the \p ExodusII mesh
+   * file.
+   */
+  void read_bex_cv_blocks();
+
+  /**
    * Prints the nodal information, by default to \p libMesh::out.
    */
-  void print_nodes(std::ostream & out = libMesh::out);
+  void print_nodes(std::ostream & out_stream = libMesh::out);
 
   /**
    * Reads information for all of the blocks in the \p ExodusII mesh
@@ -252,11 +256,6 @@ public:
    * Closes the \p ExodusII mesh file.
    */
   void close();
-
-  /**
-   * \returns The value obtained from a generic exII::ex_inquire() call.
-   */
-  int inquire(int req_info, std::string error_msg="");
 
   /**
    * Reads and stores the timesteps in the 'time_steps' array.
@@ -356,13 +355,27 @@ public:
                      std::vector<std::map<BoundaryInfo::BCTuple, Real>> & bc_vals);
 
   /**
+   * Similar to read_sideset_data(), but instead of creating one
+   * std::map per sideset per variable, creates a single map of (elem,
+   * side, boundary_id) tuples, and stores the exo file array indexing
+   * for any/all sideset variables on that sideset (they are all the
+   * same). This function does not actually call exII::ex_get_sset_var()
+   * to get values, and can be useful if only the original ordering of
+   * (elem, side) pairs in the exo file is required in cases where a
+   * separate approach is used to read the sideset data arrays.
+   */
+  void
+  get_sideset_data_indices (const MeshBase & mesh,
+                            std::map<BoundaryInfo::BCTuple, unsigned int> & bc_array_indices);
+
+  /**
    * Write nodeset data for the requested timestep.
    */
   void
   write_nodeset_data (int timestep,
                       const std::vector<std::string> & var_names,
                       const std::vector<std::set<boundary_id_type>> & node_boundary_ids,
-                      std::vector<std::map<BoundaryInfo::NodeBCTuple, Real>> & bc_vals);
+                      const std::vector<std::map<BoundaryInfo::NodeBCTuple, Real>> & bc_vals);
 
   /**
    * Read nodeset variables, if any, into the provided data structures.
@@ -372,6 +385,16 @@ public:
                      std::vector<std::string> & var_names,
                      std::vector<std::set<boundary_id_type>> & node_boundary_ids,
                      std::vector<std::map<BoundaryInfo::NodeBCTuple, Real>> & bc_vals);
+
+  /**
+   * Similar to read_nodeset_data(), but instead of creating one
+   * std::map per nodeset per variable, creates a single map of
+   * (node_id, boundary_id) tuples, and stores the exo file array
+   * indexing for any/all nodeset variables on that nodeset (they are
+   * all the same).
+   */
+  void
+  get_nodeset_data_indices (std::map<BoundaryInfo::NodeBCTuple, unsigned int> & bc_array_indices);
 
   /**
    * Writes the vector of values to the element variables.
@@ -426,6 +449,11 @@ public:
    * Writes the vector of global variables.
    */
   void write_global_values(const std::vector<Real> & values, int timestep);
+
+  /**
+   * Uses ex_update() to flush buffers to file.
+   */
+  void update();
 
   /**
    * Reads the vector of global variables.
@@ -541,6 +569,10 @@ public:
   // Total number of elements in the mesh
   int & num_elem;
 
+  // Smallest element id which exceeds every element id in the mesh.
+  // (this may exceed num_elem due to mapping)
+  int end_elem_id() const;
+
   // Total number of element blocks
   int & num_elem_blk;
 
@@ -644,6 +676,19 @@ public:
 
   // z locations of node points
   std::vector<Real> z;
+
+  // Spline weights associated with node points, in IGA meshes
+  std::vector<Real> w;
+
+  // Number of Bezier Extraction coefficient vectors in a block
+  unsigned int bex_num_elem_cvs;
+
+  // Bezier Extraction connectivity indices, in IGA meshes
+  std::vector<std::vector<long unsigned int>> bex_cv_conn;
+
+  // Bezier Extraction coefficient vectors, in IGA meshes
+  // bex_dense_constraint_vecs[block_num][vec_num][column_num] = coef
+  std::vector<std::vector<std::vector<Real>>> bex_dense_constraint_vecs;
 
   // Type of element in a given block
   std::vector<char> elem_type;
@@ -756,6 +801,9 @@ protected:
   // If true, whenever there is an I/O operation, only perform if if we are on processor 0.
   bool _run_only_on_proc0;
 
+  // This flag gets set after the create() function has been successfully called.
+  bool _opened_by_create;
+
   // True once the elem vars are initialized
   bool _elem_vars_initialized;
 
@@ -769,6 +817,9 @@ protected:
   // of the elements comprising the mesh) instead of the mesh's
   // spatial dimension, when writing.  By default this is false.
   bool _use_mesh_dimension_instead_of_spatial_dimension;
+
+  // Set once the elem num map has been read
+  int _end_elem_id;
 
   // Use this for num_dim when writing the Exodus file.  If non-zero, supersedes
   // any value set in _use_mesh_dimension_instead_of_spatial_dimension.
@@ -886,6 +937,8 @@ public:
       inverse_shellface_map(nullptr),
       shellface_index_offset(0),
       libmesh_type(INVALID_ELEM),
+      dim(0),
+      n_nodes(0),
       exodus_type("")
   {}
 
@@ -1008,6 +1061,17 @@ public:
   ElemType libmesh_type;
 
   /**
+   * The element dimension; useful since we don't seem to have a cheap
+   * way to look this up from ElemType
+   */
+  int dim;
+
+  /**
+   * The number of nodes per element; useful likewise
+   */
+  int n_nodes;
+
+  /**
    * The string corresponding to the Exodus type for this element
    */
   std::string exodus_type;
@@ -1054,6 +1118,13 @@ private:
   size_t counter;
   size_t table_size;
 };
+
+
+
+inline int ExodusII_IO_Helper::end_elem_id() const {
+  libmesh_assert_equal_to(std::size_t(num_elem), elem_num_map.size());
+  return _end_elem_id;
+}
 
 
 } // namespace libMesh

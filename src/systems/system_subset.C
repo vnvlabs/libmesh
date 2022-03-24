@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -17,9 +17,6 @@
 
 
 
-// C++ includes
-
-
 // Local includes
 #include "libmesh/system_subset.h"
 
@@ -34,13 +31,11 @@ SystemSubset::SystemSubset (const System & system):
 }
 
 
-SystemSubset::~SystemSubset (void)
-{
-}
+SystemSubset::~SystemSubset () = default;
 
 
 const System &
-SystemSubset::get_system(void)const
+SystemSubset::get_system() const
 {
   return _system;
 }

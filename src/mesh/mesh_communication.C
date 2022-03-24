@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -36,6 +36,7 @@
 #include "libmesh/utility.h"
 #include "libmesh/remote_elem.h"
 #include "libmesh/int_range.h"
+#include "libmesh/elem_side_builder.h"
 
 // C++ Includes
 #include <numeric>
@@ -247,23 +248,46 @@ void connect_families(std::set<const Elem *, CompareElemIdsByLevel> & connected_
     {
       const Elem * elem = *elem_rit;
       libmesh_assert(elem);
-      const Elem * parent = elem->parent();
 
       // We let ghosting functors worry about only active elements,
       // but the remote processor needs all its semilocal elements'
       // ancestors and active semilocal elements' descendants too.
+      const Elem * parent = elem->parent();
       if (parent)
         connected_elements.insert (parent);
 
-      if (elem->active() && elem->has_children())
+      auto total_family_insert = [& connected_elements](const Elem * e)
         {
-          std::vector<const Elem *> subactive_family;
-          elem->total_family_tree(subactive_family);
-          for (const auto & f : subactive_family)
+          if (e->active() && e->has_children())
             {
-              libmesh_assert(f != remote_elem);
-              connected_elements.insert(f);
+              std::vector<const Elem *> subactive_family;
+              e->total_family_tree(subactive_family);
+              for (const auto & f : subactive_family)
+                {
+                  libmesh_assert(f != remote_elem);
+                  connected_elements.insert(f);
+                }
             }
+        };
+
+      total_family_insert(elem);
+
+      // We also need any interior parents on this mesh, which will
+      // then need their own ancestors and descendants.
+      const Elem * interior_parent = elem->interior_parent();
+
+      // Don't try to grab interior parents from other meshes, e.g. if
+      // this was a BoundaryMesh associated with a separate Mesh.
+
+      // We can't test this if someone's using the pre-mesh-ptr API
+      libmesh_assert(!interior_parent || mesh);
+
+      if (interior_parent &&
+          interior_parent == mesh->query_elem_ptr(interior_parent->id()) &&
+          !connected_elements.count(interior_parent))
+        {
+          connected_elements.insert (interior_parent);
+          total_family_insert(interior_parent);
         }
     }
 
@@ -369,9 +393,12 @@ void MeshCommunication::redistribute (DistributedMesh & mesh,
   std::vector<Parallel::Request>
     node_send_requests, element_send_requests;
 
+  // Be compatible with both deprecated and corrected MeshBase iterator types
+  typedef std::remove_const<MeshBase::const_element_iterator::value_type>::type nc_v_t;
+
   // We're going to sort elements-to-send by pid in one pass, to avoid
   // sending predicated iterators through the whole mesh N_p times
-  std::unordered_map<processor_id_type, std::vector<Elem *>> send_to_pid;
+  std::unordered_map<processor_id_type, std::vector<nc_v_t>> send_to_pid;
 
   const MeshBase::const_element_iterator send_elems_begin =
 #ifdef LIBMESH_ENABLE_AMR
@@ -393,9 +420,8 @@ void MeshCommunication::redistribute (DistributedMesh & mesh,
   // If we don't have any just-coarsened elements to send to a
   // pid, then there won't be any nodes or any elements pulled
   // in by ghosting either, and we're done with this pid.
-  for (auto pair : send_to_pid)
+  for (const auto & [pid, p_elements] : send_to_pid)
     {
-      const processor_id_type pid = pair.first;
       // don't send to ourselves!!
       if (pid == mesh.processor_id())
         continue;
@@ -406,11 +432,14 @@ void MeshCommunication::redistribute (DistributedMesh & mesh,
       // to be ghosted and any nodes which are used by any of the
       // above.
 
-      const auto & p_elements = pair.second;
       libmesh_assert(!p_elements.empty());
 
-      Elem * const * elempp = p_elements.data();
-      Elem * const * elemend = elempp + p_elements.size();
+      // Be compatible with both deprecated and
+      // corrected MeshBase iterator types
+      typedef MeshBase::const_element_iterator::value_type v_t;
+
+      v_t * elempp = p_elements.data();
+      v_t * elemend = elempp + p_elements.size();
 
 #ifndef LIBMESH_ENABLE_AMR
       // This parameter is not used when !LIBMESH_ENABLE_AMR.
@@ -420,11 +449,11 @@ void MeshCommunication::redistribute (DistributedMesh & mesh,
 
       MeshBase::const_element_iterator elem_it =
         MeshBase::const_element_iterator
-          (elempp, elemend, Predicates::NotNull<Elem * const *>());
+          (elempp, elemend, Predicates::NotNull<v_t *>());
 
       const MeshBase::const_element_iterator elem_end =
         MeshBase::const_element_iterator
-          (elemend, elemend, Predicates::NotNull<Elem * const *>());
+          (elemend, elemend, Predicates::NotNull<v_t *>());
 
       std::set<const Elem *, CompareElemIdsByLevel> elements_to_send;
 
@@ -659,8 +688,8 @@ void MeshCommunication::gather_neighboring_elements (DistributedMesh & mesh) con
   {
     std::set<dof_id_type> my_interface_node_set;
 
-    // Pull objects out of the loop to reduce heap operations
-    std::unique_ptr<const Elem> side;
+    // For avoiding extraneous element side construction
+    ElemSideBuilder side_builder;
 
     // since parent nodes are a subset of children nodes, this should be sufficient
     for (const auto & elem : mesh.active_local_element_ptr_range())
@@ -674,10 +703,10 @@ void MeshCommunication::gather_neighboring_elements (DistributedMesh & mesh) con
             for (auto s : elem->side_index_range())
               if (elem->neighbor_ptr(s) == nullptr)
                 {
-                  elem->build_side_ptr(side, s);
+                  const Elem & side = side_builder(*elem, s);
 
-                  for (auto n : make_range(side->n_vertices()))
-                    my_interface_node_set.insert (side->node_id(n));
+                  for (auto n : make_range(side.n_vertices()))
+                    my_interface_node_set.insert (side.node_id(n));
                 }
           }
       }
@@ -1351,15 +1380,10 @@ void MeshCommunication::gather (const processor_id_type root_id, MeshBase & mesh
           serialized_rows.emplace(rowid, std::move(serialized_row));
         }
 
-      libmesh_not_implemented();
-
-      // TODO: THIS NEEDS TIMPI SUPPORT
-      /*
       if (root_id == DofObject::invalid_processor_id)
-        mesh.comm().allgather(serialized_rows);
+        mesh.comm().set_union(serialized_rows);
       else
-        mesh.comm().gather(serialized_rows, root_id);
-      */
+        mesh.comm().set_union(serialized_rows, root_id);
 
       if (root_id == DofObject::invalid_processor_id ||
           root_id == mesh.processor_id())
@@ -1544,7 +1568,7 @@ struct SyncNodeIds
 #ifdef LIBMESH_ENABLE_AMR
 struct SyncPLevels
 {
-  typedef unsigned char datum;
+  typedef std::pair<unsigned char,unsigned char> datum;
 
   SyncPLevels(MeshBase & _mesh) :
     mesh(_mesh) {}
@@ -1560,7 +1584,9 @@ struct SyncPLevels
     for (const auto & id : ids)
       {
         Elem & elem = mesh.elem_ref(id);
-        ids_out.push_back(cast_int<unsigned char>(elem.p_level()));
+        ids_out.push_back
+          (std::make_pair(cast_int<unsigned char>(elem.p_level()),
+                          static_cast<unsigned char>(elem.p_refinement_flag())));
       }
   }
 
@@ -1570,7 +1596,12 @@ struct SyncPLevels
     for (auto i : index_range(old_ids))
       {
         Elem & elem = mesh.elem_ref(old_ids[i]);
-        elem.set_p_level(new_p_levels[i]);
+        // Make sure these are consistent
+        elem.hack_p_level_and_refinement_flag
+          (new_p_levels[i].first,
+           static_cast<Elem::RefinementState>(new_p_levels[i].second));
+        // Make sure parents' levels are consistent
+        elem.set_p_level(new_p_levels[i].first);
       }
   }
 };
@@ -2074,10 +2105,11 @@ MeshCommunication::delete_remote_elements (DistributedMesh & mesh,
                    mesh.pid_elements_end(DofObject::invalid_processor_id),
                    elements_to_keep);
 
-  // The elements we need should have their ancestors and their
-  // subactive children present too.  If the mesh has any
-  // constraint rows, then elements with constrained nodes need
-  // elements with constraining nodes to remain present.
+  // The elements we need should have their ancestors, their
+  // interior_parent links, and their subactive children present too.
+  // If the mesh has any constraint rows, then elements with
+  // constrained nodes need elements with constraining nodes to remain
+  // present.
   connect_families(elements_to_keep, &mesh);
 
   // Don't delete nodes that our semilocal elements need

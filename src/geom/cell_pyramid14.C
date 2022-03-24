@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -59,18 +59,6 @@ const unsigned int Pyramid14::edge_nodes_map[Pyramid14::num_edges][Pyramid14::no
     {1, 4, 10}, // Edge 5
     {2, 4, 11}, // Edge 6
     {3, 4, 12}  // Edge 7
-  };
-
-const unsigned int Pyramid14::edge_sides_map[Pyramid14::num_edges][2] =
-  {
-    {0, 4}, // Edge 0
-    {1, 4}, // Edge 1
-    {2, 4}, // Edge 2
-    {3, 4}, // Edge 3
-    {0, 3}, // Edge 4
-    {0, 1}, // Edge 5
-    {1, 2}, // Edge 6
-    {2, 3}  // Edge 7
   };
 
 // ------------------------------------------------------------
@@ -272,6 +260,7 @@ std::unique_ptr<Elem> Pyramid14::build_side_ptr (const unsigned int i, bool prox
   face->set_interior_parent(this);
 
   face->subdomain_id() = this->subdomain_id();
+  face->set_mapping_type(this->mapping_type());
 #ifdef LIBMESH_ENABLE_AMR
   face->set_p_level(this->p_level());
 #endif
@@ -314,6 +303,7 @@ void Pyramid14::build_side_ptr (std::unique_ptr<Elem> & side,
     }
 
   side->subdomain_id() = this->subdomain_id();
+  side->set_mapping_type(this->mapping_type());
 
   // Set the nodes
   for (auto n : side->node_index_range())
@@ -769,6 +759,7 @@ void Pyramid14::permute(unsigned int perm_num)
       swap4nodes(0,1,2,3);
       swap4nodes(5,6,7,8);
       swap4nodes(9,10,11,12);
+      swap4neighbors(0,1,2,3);
     }
 }
 
@@ -777,6 +768,15 @@ unsigned int Pyramid14::center_node_on_side(const unsigned short side) const
 {
   libmesh_assert_less (side, Pyramid14::num_sides);
   return side == 4 ? 13 : invalid_uint;
+}
+
+
+ElemType Pyramid14::side_type (const unsigned int s) const
+{
+  libmesh_assert_less (s, 5);
+  if (s < 4)
+    return TRI6;
+  return QUAD9;
 }
 
 

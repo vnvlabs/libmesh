@@ -54,7 +54,7 @@ class RBEIMConstruction : public RBConstructionBase<System>
 {
 public:
 
-  enum BEST_FIT_TYPE { PROJECTION_BEST_FIT, EIM_BEST_FIT };
+  enum BEST_FIT_TYPE { PROJECTION_BEST_FIT, EIM_BEST_FIT, POD_BEST_FIT };
 
   /**
    * Constructor.  Optionally initializes required
@@ -81,6 +81,11 @@ public:
   typedef RBEIMEvaluation::QpDataMap QpDataMap;
 
   /**
+   * Type of the data structure used to map from (elem id,side_index) -> [n_vars][n_qp] data.
+   */
+  typedef RBEIMEvaluation::SideQpDataMap SideQpDataMap;
+
+  /**
    * Clear this object.
    */
   virtual void clear() override;
@@ -94,6 +99,11 @@ public:
    * Get a reference to the RBEvaluation object.
    */
   RBEIMEvaluation & get_rb_eim_evaluation();
+
+  /**
+   * Get a const reference to the RBEvaluation object.
+   */
+  const RBEIMEvaluation & get_rb_eim_evaluation() const;
 
   /**
    * Perform initialization of this object to prepare for running
@@ -136,10 +146,26 @@ public:
   virtual void print_info();
 
   /**
-   * Generate the EIM approximation for the specified parametrized function.
-   * Return the final tolerance from the training algorithm.
+   * Generate the EIM approximation for the specified parametrized function
+   * using either POD or the Greedy Algorithm. Return the final tolerance.
    */
   Real train_eim_approximation();
+
+  /**
+   * Generate the EIM approximation for the specified parametrized function
+   * using the Greedy Algorithm. Return the final tolerance.
+   * Method is virtual so that behavior can be specialized further in
+   * subclasses, if needed.
+   */
+  virtual Real train_eim_approximation_with_greedy();
+
+  /**
+   * Generate the EIM approximation for the specified parametrized function
+   * using Proper Orthogonal Decomposition (POD). Return the final tolerance.
+   * Method is virtual so that behavior can be specialized further in
+   * subclasses, if needed.
+   */
+  virtual Real train_eim_approximation_with_POD();
 
   /**
    * Build a vector of ElemAssembly objects that accesses the basis
@@ -203,6 +229,12 @@ public:
   void store_eim_solutions_for_training_set();
 
   /**
+   * Get a const reference to the specified parametrized function from
+   * the training set.
+   */
+  const QpDataMap & get_parametrized_function_from_training_set(unsigned int training_index) const;
+
+  /**
    * Enum that indicates which type of "best fit" algorithm
    * we should use.
    * a) projection: Find the best fit in the inner product
@@ -220,13 +252,6 @@ private:
   std::pair<Real, unsigned int> compute_max_eim_error();
 
   /**
-   * Compute the maximum (i.e. l-infinity norm) error of the best fit
-   * of the parametrized function at training index \p training_index
-   * into the EIM approximation space.
-   */
-  Real compute_best_fit_error(unsigned int training_index);
-
-  /**
    * Compute and store the parametrized function for each
    * parameter in the training set at all the stored qp locations.
    */
@@ -239,6 +264,15 @@ private:
   void initialize_qp_data();
 
   /**
+   * Initialize the \p elem_ids and \p sbd_ids associated with the observation
+   * points so that we can subsequently evaluate parametrized functions at the
+   * observations points.
+   */
+  void initialize_observation_points_data(
+    std::vector<dof_id_type> & observation_points_elem_ids,
+    std::vector<subdomain_id_type> & observation_points_sbd_ids);
+
+  /**
    * Evaluate the inner product of vec1 and vec2 which specify values at
    * quadrature points. The inner product includes the JxW contributions
    * stored in _local_quad_point_JxW, so that this is equivalent to
@@ -247,15 +281,68 @@ private:
   Number inner_product(const QpDataMap & v, const QpDataMap & w);
 
   /**
+   * Same as inner_product() except for side data.
+   */
+  Number side_inner_product(const SideQpDataMap & v, const SideQpDataMap & w);
+
+  /**
    * Get the maximum absolute value from a vector stored in the format that we use
    * for basis functions.
    */
-  Real get_max_abs_value(const QpDataMap & v) const;
+  template <class DataMap>
+  Real get_max_abs_value(const DataMap & v) const
+  {
+    Real max_value = 0.;
+
+    for (const auto & pr : v)
+      {
+        const auto & v_comp_and_qp = pr.second;
+
+        for (const auto & comp : index_range(v_comp_and_qp))
+          {
+            // If scale_components_in_enrichment() returns true then we
+            // apply a scaling to give an approximately uniform scaling
+            // for all components.
+            Real comp_scaling = 1.;
+            if (get_rb_eim_evaluation().scale_components_in_enrichment())
+              {
+                // Make sure that _component_scaling_in_training_set is initialized
+                libmesh_error_msg_if(comp >= _component_scaling_in_training_set.size(),
+                                    "Invalid vector index");
+                comp_scaling = _component_scaling_in_training_set[comp];
+              }
+
+            const std::vector<Number> & v_qp = v_comp_and_qp[comp];
+            for (Number value : v_qp)
+              max_value = std::max(max_value, std::abs(value * comp_scaling));
+          }
+      }
+
+    comm().max(max_value);
+    return max_value;
+  }
+
+
+  /**
+   * Same as get_max_abs_value() except for side data.
+   */
+  Real get_side_max_abs_value(const SideQpDataMap & v) const;
 
   /**
    * Add a new basis function to the EIM approximation.
    */
   void enrich_eim_approximation(unsigned int training_index);
+
+  /**
+   * Implementation of enrich_eim_approximation() for the case of element sides.
+   */
+  void enrich_eim_approximation_on_sides(const SideQpDataMap & interior_pf);
+
+  /**
+   * Implementation of enrich_eim_approximation() for the case of element interiors.
+   */
+  void enrich_eim_approximation_on_interiors(const QpDataMap & interior_pf,
+                                             const std::vector<std::vector<Number>> & interior_pf_obs_values);
 
   /**
    * Update the matrices used in training the EIM approximation.
@@ -274,8 +361,31 @@ private:
   /**
    * Scale all values in \p pf by \p scaling_factor
    */
-  static void scale_parametrized_function(
-    QpDataMap & local_pf,
+  template<class DataMap>
+  static void scale_parametrized_function(DataMap & local_pf,
+                                          Number scaling_factor)
+  {
+    for (auto & pr : local_pf)
+      {
+        auto & comp_and_qp = pr.second;
+
+        for (unsigned int comp : index_range(comp_and_qp))
+          {
+            std::vector<Number> & qp_values = comp_and_qp[comp];
+
+            for (unsigned int qp : index_range(qp_values))
+              {
+                qp_values[qp] *= scaling_factor;
+              }
+          }
+      }
+  }
+
+  /**
+   * Same as scale_parametrized_function() excecpt for side data.
+   */
+  static void scale_side_parametrized_function(
+    SideQpDataMap & local_pf,
     Number scaling_factor);
 
   /**
@@ -320,10 +430,31 @@ private:
   std::vector<QpDataMap> _local_parametrized_functions_for_training;
 
   /**
+   * Same as _local_parametrized_functions_for_training except for side data.
+   * The indexing is as follows:
+   *   basis function index --> (element ID,side index) --> variable --> quadrature point --> value
+   */
+  std::vector<SideQpDataMap> _local_side_parametrized_functions_for_training;
+
+  /**
    * Maximum value in _local_parametrized_functions_for_training across all processors.
    * This can be used for normalization purposes, for example.
    */
   Real _max_abs_value_in_training_set;
+
+  /**
+   * The training sample index at which we found _max_abs_value_in_training_set.
+   */
+  unsigned int _max_abs_value_in_training_set_index;
+
+  /**
+   * Keep track of a scaling factor for each component of the parametrized functions in
+   * the training set which "scales up" each component to have a similar magnitude as
+   * the largest component encountered in the training set. This can give more uniform
+   * scaling across all components and is helpful in cases where components have widely
+   * varying magnitudes.
+   */
+  std::vector<Real> _component_scaling_in_training_set;
 
   /**
    * The quadrature point locations, quadrature point weights (JxW), and subdomain IDs
@@ -348,6 +479,34 @@ private:
    * to the mapping function derivatives.
    */
   std::unordered_map<dof_id_type, std::vector<std::vector<Point>> > _local_quad_point_locations_perturbations;
+
+  /**
+   * Same as above except for side data.
+   */
+  std::map<std::pair<dof_id_type,unsigned int>, std::vector<Point> > _local_side_quad_point_locations;
+  std::map<std::pair<dof_id_type,unsigned int>, std::vector<Real> > _local_side_quad_point_JxW;
+  std::map<std::pair<dof_id_type,unsigned int>, subdomain_id_type > _local_side_quad_point_subdomain_ids;
+  std::map<std::pair<dof_id_type,unsigned int>, boundary_id_type > _local_side_quad_point_boundary_ids;
+  std::map<std::pair<dof_id_type,unsigned int>, std::vector<std::vector<Point>> > _local_side_quad_point_locations_perturbations;
+
+  /**
+   * For side data, we also store "side type" info. This is used to distinguish between
+   * data that is stored on a "shellface" vs. a "standard side". The convention we use
+   * here is:
+   *  0 --> standard side
+   *  1 --> shellface
+   */
+  std::map<std::pair<dof_id_type,unsigned int>, unsigned int > _local_side_quad_point_side_types;
+
+  /**
+   * We also optionally store the values at the "observation points" for all parametrized functions
+   * in the training set. These values are used to obtain the observation values that are stored in
+   * RBEIMEvaluation.
+   *
+   * Indexing is: training_index --> observation point index --> component --> value.
+   */
+  std::vector<std::vector<std::vector<Number>>> _parametrized_functions_for_training_obs_values;
+
 };
 
 } // namespace libMesh

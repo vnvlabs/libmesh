@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -169,7 +169,7 @@ public:
     /**
      * Destructor.
      */
-    virtual ~Value() {}
+    virtual ~Value() = default;
 
 #ifdef LIBMESH_HAVE_RTTI
     /**
@@ -215,18 +215,18 @@ public:
     /**
      * String identifying the type of parameter stored.
      */
-    virtual std::string type () const;
+    virtual std::string type () const override;
 #endif // LIBMESH_HAVE_RTTI
 
     /**
      * Prints the parameter value to the specified stream.
      */
-    virtual void print(std::ostream &) const;
+    virtual void print(std::ostream &) const override;
 
     /**
      * Clone this value.  Useful in copy-construction.
      */
-    virtual Value * clone () const;
+    virtual Value * clone () const override;
 
   private:
     /**

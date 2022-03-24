@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -31,15 +31,8 @@ namespace libMesh
 {
 // ------------------------------------------------------------
 // SubdomainSelection implementation
-SystemSubsetBySubdomain::SubdomainSelection::
-SubdomainSelection (void)
-{
-}
-
-SystemSubsetBySubdomain::SubdomainSelection::
-~SubdomainSelection (void)
-{
-}
+SystemSubsetBySubdomain::SubdomainSelection::SubdomainSelection () = default;
+SystemSubsetBySubdomain::SubdomainSelection::~SubdomainSelection () = default;
 
 SystemSubsetBySubdomain::SubdomainSelectionByList::
 SubdomainSelectionByList (const std::set<subdomain_id_type> & list):
@@ -83,10 +76,7 @@ SystemSubsetBySubdomain (const System & system,
   this->init(subdomain_ids);
 }
 
-SystemSubsetBySubdomain::
-~SystemSubsetBySubdomain (void)
-{
-}
+SystemSubsetBySubdomain::~SystemSubsetBySubdomain () = default;
 
 const std::vector<unsigned int> &
 SystemSubsetBySubdomain::dof_ids() const

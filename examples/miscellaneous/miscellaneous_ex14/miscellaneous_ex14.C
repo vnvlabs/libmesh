@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -612,7 +612,7 @@ void assemble_SchroedingerEquation(EquationSystems &es, const std::string &syste
             Real tol=0.01*elem->hmin();
             while (found_s==0){
                for(unsigned int n=0; n< elem->n_sides(); n++){
-                  if (relevant_neighbor->close_to_point(elem->side_ptr(n)->centroid(), tol)){
+                  if (relevant_neighbor->close_to_point(elem->side_ptr(n)->vertex_average(), tol)){
                      found_s++;
                      side=n;
 #ifndef DEBUG

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -62,18 +62,6 @@ const unsigned int InfHex16::edge_nodes_map[InfHex16::num_edges][InfHex16::nodes
     {1, 5, 99}, // Edge 5
     {2, 6, 99}, // Edge 6
     {3, 7, 99}  // Edge 7
-  };
-
-const unsigned int InfHex16::edge_sides_map[InfHex16::num_edges][2] =
-  {
-    {0, 1}, // Edge 0
-    {1, 2}, // Edge 1
-    {0, 3}, // Edge 2
-    {0, 4}, // Edge 3
-    {1, 4}, // Edge 4
-    {1, 2}, // Edge 5
-    {2, 3}, // Edge 6
-    {3, 4}  // Edge 7
   };
 
 // ------------------------------------------------------------
@@ -251,6 +239,7 @@ std::unique_ptr<Elem> InfHex16::build_side_ptr (const unsigned int i,
   face->set_interior_parent(this);
 
   face->subdomain_id() = this->subdomain_id();
+  face->set_mapping_type(this->mapping_type());
 #ifdef LIBMESH_ENABLE_AMR
   face->set_p_level(this->p_level());
 #endif
@@ -298,6 +287,7 @@ void InfHex16::build_side_ptr (std::unique_ptr<Elem> & side,
     }
 
   side->subdomain_id() = this->subdomain_id();
+  side->set_mapping_type(this->mapping_type());
 
   // Set the nodes
   for (auto n : side->node_index_range())
@@ -357,6 +347,7 @@ void InfHex16::build_edge_ptr (std::unique_ptr<Elem> & edge,
     }
 
   edge->subdomain_id() = this->subdomain_id();
+  edge->set_mapping_type(this->mapping_type());
 #ifdef LIBMESH_ENABLE_AMR
   edge->set_p_level(this->p_level());
 #endif
@@ -441,7 +432,7 @@ InfHex16::second_order_child_vertex (const unsigned int n) const
 
 #ifdef LIBMESH_ENABLE_AMR
 
-const float InfHex16::_embedding_matrix[InfHex16::num_children][InfHex16::num_nodes][InfHex16::num_nodes] =
+const Real InfHex16::_embedding_matrix[InfHex16::num_children][InfHex16::num_nodes][InfHex16::num_nodes] =
   {
     // embedding matrix for child 0
     {
@@ -543,8 +534,20 @@ InfHex16::permute(unsigned int perm_num)
       swap4nodes(4,5,6,7);
       swap4nodes(8,9,10,11);
       swap4nodes(12,13,14,15);
+      swap4neighbors(1,2,3,4);
     }
 }
+
+
+ElemType
+InfHex16::side_type (const unsigned int s) const
+{
+  libmesh_assert_less (s, 5);
+  if (s == 0)
+    return QUAD8;
+  return INFQUAD6;
+}
+
 
 } // namespace libMesh
 

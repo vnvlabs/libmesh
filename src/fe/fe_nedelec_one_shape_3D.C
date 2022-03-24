@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -154,6 +154,7 @@ RealGradient FE<3,NEDELEC_ONE>::shape(const Elem * elem,
             }
 
           case TET10:
+          case TET14:
             {
               libmesh_assert_less (i, 6);
 
@@ -514,6 +515,7 @@ RealGradient FE<3,NEDELEC_ONE>::shape_deriv(const Elem * elem,
             }
 
           case TET10:
+          case TET14:
             {
               libmesh_assert_less (i, 6);
 
@@ -942,6 +944,7 @@ RealGradient FE<3,NEDELEC_ONE>::shape_second_deriv(const Elem * elem,
             }
 
           case TET10:
+          case TET14:
             {
               libmesh_assert_less (i, 6);
               return RealGradient();

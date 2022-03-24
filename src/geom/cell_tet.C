@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -46,8 +46,15 @@ const Real Tet::_master_points[10][3] =
     {0, 0.5, 0.5}
   };
 
-
-
+const unsigned int Tet::edge_sides_map[6][2] =
+  {
+    {0, 1}, // Edge 0
+    {0, 2}, // Edge 1
+    {0, 3}, // Edge 2
+    {1, 3}, // Edge 3
+    {1, 2}, // Edge 4
+    {2, 3}  // Edge 5
+  };
 
 // ------------------------------------------------------------
 // Tet class member functions
@@ -200,15 +207,15 @@ bool Tet::is_edge_on_side(const unsigned int e,
   libmesh_assert_less (e, this->n_edges());
   libmesh_assert_less (s, this->n_sides());
 
-  return (Tet4::edge_sides_map[e][0] == s ||
-          Tet4::edge_sides_map[e][1] == s);
+  return (edge_sides_map[e][0] == s || edge_sides_map[e][1] == s);
 }
 
 
 
 std::vector<unsigned int> Tet::sides_on_edge(const unsigned int e) const
 {
-  return {Tet4::edge_sides_map[e][0], Tet4::edge_sides_map[e][1]};
+  libmesh_assert_less (e, this->n_edges());
+  return {edge_sides_map[e][0], edge_sides_map[e][1]};
 }
 
 

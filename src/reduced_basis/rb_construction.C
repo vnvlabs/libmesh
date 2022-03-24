@@ -55,7 +55,9 @@
 #include <sstream>
 #include <limits>
 #include <stdlib.h> // mkstemps on Linux
+#ifdef LIBMESH_HAVE_UNISTD_H
 #include <unistd.h> // mkstemps on MacOS
+#endif
 
 namespace libMesh
 {
@@ -87,7 +89,8 @@ RBConstruction::RBConstruction (EquationSystems & es,
     abs_training_tolerance(1.e-12),
     normalize_rb_bound_in_greedy(false),
     RB_training_type("Greedy"),
-    _preevaluate_thetas_flag(false)
+    _preevaluate_thetas_flag(false),
+    _preevaluate_thetas_completed(false)
 {
   // set assemble_before_solve flag to false
   // so that we control matrix assembly.
@@ -147,18 +150,15 @@ void RBConstruction::solve_for_matrix_and_rhs(LinearSolver<Number> & input_solve
   const unsigned int maxits =
     es.parameters.get<unsigned int>("linear solver maximum iterations");
 
-  // Solve the linear system.  Several cases:
-  std::pair<unsigned int, Real> rval = std::make_pair(0,0.0);
-
   // It's good practice to clear the solution vector first since it can
   // affect convergence of iterative solvers
   solution->zero();
-  rval = input_solver.solve (input_matrix, *solution, input_rhs, tol, maxits);
 
+  // Solve the linear system.
   // Store the number of linear iterations required to
   // solve and the final residual.
-  _n_linear_iterations   = rval.first;
-  _final_linear_residual = rval.second;
+  std::tie(_n_linear_iterations, _final_linear_residual) =
+    input_solver.solve (input_matrix, *solution, input_rhs, tol, maxits);
 
   get_dof_map().enforce_constraints_exactly(*this);
 
@@ -728,6 +728,11 @@ void RBConstruction::add_scaled_matrix_and_vector(Number scalar,
         }
 
       context.pre_fe_reinit(*this, elem);
+
+      // Do nothing in case there are no dof_indices on the current element
+      if ( context.get_dof_indices().empty() )
+        continue;
+
       context.elem_fe_reinit();
 
       if (elemtype != NODEELEM)
@@ -1559,6 +1564,8 @@ Real RBConstruction::truth_solve(int plot_solution)
       std::set<std::string> system_names = {this->name()};
       exo_io.write_equation_systems("truth.exo", this->get_equation_systems(), &system_names);
     }
+#else
+  libmesh_ignore(plot_solution);
 #endif
 
   // Get the X norm of the truth solution
@@ -2637,6 +2644,10 @@ void RBConstruction::preevaluate_thetas()
 
   _evaluated_thetas.resize(get_local_n_training_samples());
 
+  // Early return if we've already preevaluated thetas.
+  if (_preevaluate_thetas_completed)
+    return;
+
   if ( get_local_n_training_samples() == 0 )
     return;
 
@@ -2670,6 +2681,13 @@ void RBConstruction::preevaluate_thetas()
       for (auto i : make_range(get_local_n_training_samples()))
         _evaluated_thetas[i][n_A_terms + q_f] = F_vals[i];
     }
+
+  _preevaluate_thetas_completed = true;
+}
+
+void RBConstruction::reset_preevaluate_thetas_completed()
+{
+  _preevaluate_thetas_completed = false;
 }
 
 } // namespace libMesh

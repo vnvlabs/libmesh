@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -17,6 +17,11 @@
 
 #ifndef LIBMESH_FLOAT128_SHIMS_H
 #define LIBMESH_FLOAT128_SHIMS_H
+
+// The library configuration options
+#include "libmesh/libmesh_config.h"
+
+#ifdef LIBMESH_DEFAULT_QUADRUPLE_PRECISION
 
 # include <boost/multiprecision/float128.hpp>
 
@@ -137,20 +142,36 @@ inline boost::multiprecision::float128 pow
   return boost::multiprecision::pow(in1, in2);
 }
 
-// Boost leaves a lot of C++11 math undefined??
+// Boost float128 leaves a lot of C++11 math undefined?  So we'll just
+// add shims as we need them, for maximum compatibility with older
+// Boost versions.
 
+// Stuff that was defined as far back as I've tested:
+LIBMESH_FLOAT128_UNARY(trunc)
+LIBMESH_FLOAT128_UNARY(round)
+
+// log1p was added in Boost 1.63
+#if BOOST_VERSION > 106300
+LIBMESH_FLOAT128_UNARY(log1p)
+#endif
+
+// This doesn't take Real->Real:
+inline long long llround
+  (const boost::multiprecision::float128 in)
+{
+  return boost::multiprecision::llround(in);
+}
+
+// Stuff that wasn't, that we don't need yet:
 // LIBMESH_FLOAT128_UNARY(exp2)
 // LIBMESH_FLOAT128_UNARY(expm1)
 // LIBMESH_FLOAT128_UNARY(log2)
-// LIBMESH_FLOAT128_UNARY(log1p)
 // LIBMESH_FLOAT128_UNARY(cbrt)
 // LIBMESH_FLOAT128_UNARY(asinh)
 // LIBMESH_FLOAT128_UNARY(acosh)
 // LIBMESH_FLOAT128_UNARY(atanh)
 // LIBMESH_FLOAT128_UNARY(erf)
 // LIBMESH_FLOAT128_UNARY(erfc)
-LIBMESH_FLOAT128_UNARY(trunc)
-LIBMESH_FLOAT128_UNARY(round)
 // LIBMESH_FLOAT128_UNARY(nearbyint)
 // LIBMESH_FLOAT128_UNARY(rint)
 
@@ -161,5 +182,7 @@ LIBMESH_FLOAT128_UNARY(round)
 // LIBMESH_FLOAT128_BINARY(hypot)
 
 }
+
+#endif // LIBMESH_DEFAULT_QUADRUPLE_PRECISION
 
 #endif // LIBMESH_FLOAT128_SHIMS_H

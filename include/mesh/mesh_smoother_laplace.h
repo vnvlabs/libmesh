@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -54,7 +54,7 @@ public:
   /**
    * Destructor.
    */
-  virtual ~LaplaceMeshSmoother() {}
+  virtual ~LaplaceMeshSmoother() = default;
 
   /**
    * Redefinition of the smooth function from the
@@ -84,7 +84,7 @@ public:
    * Mainly for debugging, this function will print
    * out the connectivity graph which has been created.
    */
-  void print_graph(std::ostream & out = libMesh::out) const;
+  void print_graph(std::ostream & out_stream = libMesh::out) const;
 
 private:
   /**

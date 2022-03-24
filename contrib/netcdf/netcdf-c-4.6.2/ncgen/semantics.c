@@ -4,7 +4,7 @@
  *********************************************************************/
 /* $Id: semantics.c,v 1.4 2010/05/24 19:59:58 dmh Exp $ */
 /* $Header: /upc/share/CVS/netcdf-3/ncgen/semantics.c,v 1.4 2010/05/24 19:59:58 dmh Exp $ */
-#include "netcdf.h"
+
 #include        "includes.h"
 #include        "dump.h"
 #include        "ncoffsets.h"

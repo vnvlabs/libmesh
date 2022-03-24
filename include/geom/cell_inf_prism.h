@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -168,6 +168,13 @@ public:
    * One non-infinite side, three orientations.
    */
   virtual unsigned int n_permutations() const override final { return 3; }
+
+  std::vector<unsigned int> sides_on_edge(const unsigned int e) const override final;
+
+  /**
+   * This maps each edge to the sides that contain said edge.
+   */
+  static const unsigned int edge_sides_map[6][2];
 
 protected:
 

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -65,16 +65,15 @@ SlepcEigenSolver<T>::~SlepcEigenSolver ()
 
 
 template <typename T>
-void SlepcEigenSolver<T>::clear ()
+void SlepcEigenSolver<T>::clear () noexcept
 {
   if (this->initialized())
     {
       this->_is_initialized = false;
 
-      PetscErrorCode ierr=0;
-
-      ierr = LibMeshEPSDestroy(&_eps);
-      LIBMESH_CHKERR(ierr);
+      PetscErrorCode ierr = LibMeshEPSDestroy(&_eps);
+      if (ierr)
+        libmesh_warning("Warning: EPSDestroy returned a non-zero error code which we ignored.");
 
       // SLEPc default eigenproblem solver
       this->_eigen_solver_type = KRYLOVSCHUR;
@@ -868,7 +867,7 @@ void SlepcEigenSolver<T>:: set_slepc_position_of_spectrum()
 #if !SLEPC_VERSION_LESS_THAN(3,1,0)
     case TARGET_MAGNITUDE:
       {
-        ierr = EPSSetTarget(_eps, this->_target_val);
+        ierr = EPSSetTarget(_eps, PS(this->_target_val));
         LIBMESH_CHKERR(ierr);
         ierr = EPSSetWhichEigenpairs (_eps, EPS_TARGET_MAGNITUDE);
         LIBMESH_CHKERR(ierr);
@@ -876,7 +875,7 @@ void SlepcEigenSolver<T>:: set_slepc_position_of_spectrum()
       }
     case TARGET_REAL:
       {
-        ierr = EPSSetTarget(_eps, this->_target_val);
+        ierr = EPSSetTarget(_eps, PS(this->_target_val));
         LIBMESH_CHKERR(ierr);
         ierr = EPSSetWhichEigenpairs (_eps, EPS_TARGET_REAL);
         LIBMESH_CHKERR(ierr);
@@ -884,7 +883,7 @@ void SlepcEigenSolver<T>:: set_slepc_position_of_spectrum()
       }
     case TARGET_IMAGINARY:
       {
-        ierr = EPSSetTarget(_eps, this->_target_val);
+        ierr = EPSSetTarget(_eps, PS(this->_target_val));
         LIBMESH_CHKERR(ierr);
         ierr = EPSSetWhichEigenpairs (_eps, EPS_TARGET_IMAGINARY);
         LIBMESH_CHKERR(ierr);
@@ -1064,7 +1063,7 @@ PetscErrorCode SlepcEigenSolver<T>::_petsc_shell_matrix_get_diagonal(Mat mat, Ve
 
 //------------------------------------------------------------------
 // Explicit instantiations
-template class SlepcEigenSolver<Number>;
+template class LIBMESH_EXPORT SlepcEigenSolver<Number>;
 
 } // namespace libMesh
 

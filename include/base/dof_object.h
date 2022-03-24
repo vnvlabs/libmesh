@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -1067,6 +1067,14 @@ DofObject::get_extra_integer (const unsigned int index) const
 
 
 
+// If we're using a type T that's a class with no trivial
+// copy-assignment, -Wclass-memaccess will scream about doing it with
+// memcpy, even if (as with boost::multiprecision::float128) this is a
+// false positive.
+#include "libmesh/ignore_warnings.h"
+
+
+
 template <typename T>
 inline
 void
@@ -1105,6 +1113,10 @@ DofObject::get_extra_datum (const unsigned int index) const
   std::memcpy(&returnval, &_idx_buf[start_idx_i+index], sizeof(T));
   return returnval;
 }
+
+
+
+#include "libmesh/restore_warnings.h"
 
 
 
@@ -1313,6 +1325,22 @@ unsigned int DofObject::system_var_to_vg_var (const unsigned int s,
   return (var - accumulated_sum);
 }
 
+/**
+ * Comparison object to use with DofObject pointers.  This sorts by id(),
+ * so when we iterate over a set of DofObjects we visit the objects in
+ * order of increasing ID.
+ */
+struct CompareDofObjectsByID
+{
+  bool operator()(const DofObject * a,
+                  const DofObject * b) const
+  {
+    libmesh_assert (a);
+    libmesh_assert (b);
+
+    return a->id() < b->id();
+  }
+};
 
 } // namespace libMesh
 

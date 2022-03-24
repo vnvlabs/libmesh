@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -73,6 +73,7 @@ unsigned int side_hierarchic_n_dofs_at_node(const ElemType t,
       else
         return 0;
     case TRI6:
+    case TRI7:
       if (n > 2 && n < 6)
         return o+1;
       else
@@ -104,6 +105,7 @@ unsigned int side_hierarchic_n_dofs(const ElemType t, const Order o)
     case HEX27:
       return ((o+1)*(o+1)*6); // (o+1)^2 per side
     case TRI6:
+    case TRI7:
       return ((o+1)*3); // o+1 per side
     case INVALID_ELEM:
       return 0;

@@ -15,6 +15,7 @@
 #include <libmesh/cell_pyramid14.h>
 #include <libmesh/cell_pyramid5.h>
 #include <libmesh/cell_tet10.h>
+#include <libmesh/cell_tet14.h>
 #include <libmesh/cell_tet4.h>
 #include <libmesh/edge_edge2.h>
 #include <libmesh/edge_edge3.h>
@@ -27,6 +28,7 @@
 #include <libmesh/face_quad9.h>
 #include <libmesh/face_tri3.h>
 #include <libmesh/face_tri6.h>
+#include <libmesh/face_tri7.h>
 
 #include <vector>
 
@@ -51,6 +53,9 @@ private:
   ElemClass elem;
   std::vector<std::unique_ptr<Node>> nodes;
 
+protected:
+  std::string libmesh_suite_name;
+
 public:
   void setUp() {
     elem.set_id() = 0;
@@ -72,6 +77,8 @@ public:
 
   void testIsNodeOnSide()
   {
+    LOG_UNIT_TEST;
+
     for (auto s : make_range(indexbegin, indexend))
       {
         std::unique_ptr<Elem> side = elem.build_side_ptr(s);
@@ -100,6 +107,8 @@ public:
 
   void testNodesOnSide()
   {
+    LOG_UNIT_TEST;
+
     for (auto s : make_range(indexbegin, indexend))
       {
         std::unique_ptr<Elem> side = elem.build_side_ptr(s);
@@ -124,6 +133,8 @@ public:
 
   void testSidePtr()
   {
+    LOG_UNIT_TEST;
+
     for (auto s : make_range(indexbegin, indexend))
       {
         std::unique_ptr<Elem> side = elem.side_ptr(s);
@@ -135,6 +146,8 @@ public:
 
   void testSidePtrFill()
   {
+    LOG_UNIT_TEST;
+
     std::unique_ptr<Elem> side;
 
     for (auto s : make_range(indexbegin, indexend))
@@ -148,6 +161,8 @@ public:
 
   void testBuildSidePtr()
   {
+    LOG_UNIT_TEST;
+
     for (auto s : make_range(indexbegin, indexend))
       {
         std::unique_ptr<Elem> side = elem.build_side_ptr(s);
@@ -164,6 +179,8 @@ public:
 
   void testBuildSidePtrFill()
   {
+    LOG_UNIT_TEST;
+
     std::unique_ptr<Elem> side;
 
     for (auto s : make_range(indexbegin, indexend))
@@ -183,6 +200,13 @@ public:
   class SideTest_##elemclass##_##sidetype##_##indexbegin##_##indexend :                \
     public SideTest<elemclass, sidetype, indexbegin, indexend> {                       \
   public:                                                                              \
+  SideTest_##elemclass##_##sidetype##_##indexbegin##_##indexend() :                    \
+    SideTest<elemclass,sidetype,indexbegin,indexend>() {                               \
+    if (unitlog->summarized_logs_enabled())                                            \
+      this->libmesh_suite_name = "SideTest";                                           \
+    else                                                                               \
+      this->libmesh_suite_name = "SideTest_" #elemclass"_" #sidetype "_" #indexbegin "_" #indexend; \
+  }                                                                                    \
   CPPUNIT_TEST_SUITE( SideTest_##elemclass##_##sidetype##_##indexbegin##_##indexend ); \
   SIDETEST                                                                             \
   CPPUNIT_TEST_SUITE_END();                                                            \
@@ -209,6 +233,7 @@ INSTANTIATE_SIDETEST(Pyramid14, QUAD9, 4, 5);
 INSTANTIATE_SIDETEST(Pyramid5,  TRI3,  0, 4);
 INSTANTIATE_SIDETEST(Pyramid5,  QUAD4, 4, 5);
 INSTANTIATE_SIDETEST(Tet10,     TRI6,  0, 4);
+INSTANTIATE_SIDETEST(Tet14,     TRI7,  0, 4);
 INSTANTIATE_SIDETEST(Tet4,      TRI3,  0, 4);
 INSTANTIATE_SIDETEST(Edge2, NODEELEM,  0, 2);
 INSTANTIATE_SIDETEST(Edge3, NODEELEM,  0, 2);
@@ -218,6 +243,7 @@ INSTANTIATE_SIDETEST(Quad8,     EDGE3, 0, 4);
 INSTANTIATE_SIDETEST(Quad9,     EDGE3, 0, 4);
 INSTANTIATE_SIDETEST(Tri3,      EDGE2, 0, 3);
 INSTANTIATE_SIDETEST(Tri6,      EDGE3, 0, 3);
+INSTANTIATE_SIDETEST(Tri7,      EDGE3, 0, 3);
 
 #ifdef LIBMESH_ENABLE_INFINITE_ELEMENTS
 INSTANTIATE_SIDETEST(InfHex16,   QUAD8,    0, 1);

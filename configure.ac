@@ -2,7 +2,7 @@
 # configure.ac file for libmesh.  Used by Automake to generate
 # aclocal.m4 and Makefile.in. See also: http://tinyurl.com/hatuyfn
 # --------------------------------------------------------------
-AC_INIT([libmesh], [1.7.0-pre], [libmesh-users@lists.sourceforge.net], [libmesh], [http://libmesh.github.io])
+AC_INIT([libmesh], [1.7.0-pre], [https://github.com/libMesh/libmesh/discussions], [libmesh], [http://libmesh.github.io])
 AC_PREREQ([2.69])
 
 # by default CFLAGS and CXXFLAGS are set to '-g -O2' on systems that support them.
@@ -176,7 +176,7 @@ AS_IF([test "x$enablemarch" != "xno"],
 # standards level.  Adds the required flag to CXXFLAGS if
 # one is found.  Exits if no acceptable flag is found.
 # --------------------------------------------------------------
-ACSM_CXX_COMPILER_STANDARD([2011], [2017])
+ACSM_CXX_COMPILER_STANDARD([2017], [2017])
 
 # --------------------------------------------------------------
 # See compiler.m4 for the definition of this function.  It uses the
@@ -201,57 +201,9 @@ LIBMESH_SET_METHODS
 
 AC_CONFIG_FILES([contrib/utils/libmesh.pc:$LIBMESH_PC_IN])
 
-# By default we merely enable some warnings, but we can turn those
-# into errors (for library code only, not contrib or external code)
-# by configuring with --enable-werror
-AC_ARG_ENABLE(werror,
-              AC_HELP_STRING([--enable-werror],
-                             [Turn compilation warnings into errors]),
-              [AS_CASE("${enableval}",
-                       [yes], [enablewerror=yes],
-                       [no],  [enablewerror=no],
-                       [AC_MSG_ERROR(bad value ${enableval} for --enable-werror)])],
-              [enablewerror=no])
+ACSM_ENABLE_WERROR
 
-ANY_WERROR_FLAG=$WERROR_FLAGS
-AS_IF([test "x$enablewerror" != "xyes"],
-        [ANY_WERROR_FLAG=''
-         AC_MSG_RESULT(<<< Compiler warnings are just warnings >>>)],
-        [AX_CHECK_COMPILE_FLAG($WERROR_FLAGS,
-          [AC_MSG_RESULT(<<< Compiler warnings are now errors >>>)],
-          [ANY_WERROR_FLAG=''
-           AC_MSG_RESULT(<<< Compiler does not support $WERROR_FLAGS >>>)
-           AC_MSG_RESULT(<<< Compiler warnings are just warnings >>>)])])
-AC_SUBST(ANY_WERROR_FLAG)
-
-# By default we merely enable some of the most common compiler
-# warnings, but we can turn on as many warnings as we avoid triggering
-# (for library code only, not contrib or external code) by configuring
-# with --enable-paranoid-warnings
-AC_ARG_ENABLE(paranoid-warnings,
-              AC_HELP_STRING([--enable-paranoid-warnings],
-                             [Turn on paranoid compiler warnings]),
-              [AS_CASE("${enableval}",
-                       [yes], [enableparanoid=yes],
-                       [no],  [enableparanoid=no],
-                       [AC_MSG_ERROR(bad value ${enableval} for --enable-paranoid-warnings)])],
-              [enableparanoid=no])
-
-dnl Test paranoid warning flags with -Werror on so we can detect if
-dnl some are unrecognized
-ANY_PARANOID_FLAGS=$PARANOID_FLAGS
-AS_IF([test "x$enableparanoid" != "xyes"],
-        [ANY_PARANOID_FLAGS=''
-         AC_MSG_RESULT(<<< Disabling extra paranoid compiler warnings >>>)],
-        [old_CXXFLAGS="$CXXFLAGS"
-         CXXFLAGS="$CXXFLAGS $WERROR_FLAGS $PARANOID_FLAGS"
-         AC_COMPILE_IFELSE([AC_LANG_PROGRAM()],
-          [AC_MSG_RESULT(<<< Enabled extra paranoid compiler warnings >>>)],
-          [ANY_PARANOID_FLAGS=''
-           AC_MSG_RESULT(<<< Compiler may not support all of $PARANOID_FLAGS >>>)
-           AC_MSG_RESULT(<<< Disabling extra paranoid compiler warnings >>>)])
-         CXXFLAGS="$old_CXXFLAGS"])
-AC_SUBST(ANY_PARANOID_FLAGS)
+ACSM_ENABLE_PARANOID
 
 # --------------------------------------------------------------
 # Test for optional modern C++ features, which libMesh offers shims
@@ -402,6 +354,14 @@ AC_SUBST(PWD)
 LIBMESH_CORE_FEATURES
 
 
+# --------------------------------------------------------------
+# configure TIMPI, which is practically libMesh core
+#
+# Use AX_SUBDIRS_CONFIGURE here so we get timpi_config.h before
+# contrib/metaphysicl might need it later.
+# --------------------------------------------------------------
+AX_SUBDIRS_CONFIGURE([contrib/timpi])
+
 
 # --------------------------------------------------------------
 # configure optional, external packages and libraries
@@ -455,6 +415,7 @@ AS_IF([test "x$enableexamples" = "xyes"],
                          examples/miscellaneous/miscellaneous_ex12/Makefile
                          examples/miscellaneous/miscellaneous_ex13/Makefile
                          examples/miscellaneous/miscellaneous_ex14/Makefile
+                         examples/miscellaneous/miscellaneous_ex15/Makefile
                          examples/optimization/optimization_ex1/Makefile
                          examples/optimization/optimization_ex2/Makefile
                          examples/subdomains/subdomains_ex1/Makefile
@@ -492,13 +453,29 @@ AS_IF([test "x$enableexamples" = "xyes"],
 # additional arguments to be passed to those packages, do that here.
 # Specifically, we append libmesh_subpackage_arguments to ac_configure_args
 # before AC_OUTPUT recurses into our subpackages
+
+# We need our netcdf subpackage to be able to use whatever HDF5 we've
+# detected.  That means using whatever $HDF5_CPPFLAGS and $HDF5_LIBS
+# we've determined work - but if we're using PETSc it also means
+# passing along PETSc's directories in case we want to link to a
+# --download-hdf5 build there.
+SUB_CPPFLAGS="$CPPFLAGS"
+SUB_LIBS="$LIBS"
+AS_IF([test $enablehdf5 = yes],
+      [
+       SUB_CPPFLAGS="$HDF5_CPPFLAGS $SUB_CPPFLAGS"
+       SUB_LIBS="$HDF5_LIBS $SUB_LIBS"
+       AS_IF([test "x$enablepetsc" != "xno"],
+             [
+              SUB_CPPFLAGS="$PETSCINCLUDEDIRS $SUB_CPPFLAGS"
+              SUB_LIBS="$PETSCLINKLIBS $SUB_LIBS"
+             ])])
+
 AS_IF([test "x$enablenested" = "xyes"],
       [
         ac_configure_args_SAVE="$ac_configure_args"
-        ac_configure_args="$ac_configure_args $libmesh_subpackage_arguments CXX='$CXX' CC='$CC' F77='$F77' FC='$FC' CPPFLAGS='$HDF5_CPPFLAGS $CPPFLAGS' LIBS='$HDF5_LIBS $LIBS'"
+        ac_configure_args="$ac_configure_args $libmesh_subpackage_arguments CXX='$CXX' CC='$CC' F77='$F77' FC='$FC' CPPFLAGS='$SUB_CPPFLAGS' LIBS='$SUB_LIBS'"
       ])
-
-AC_CONFIG_SUBDIRS([contrib/timpi])
 
 # Create output files. Also configures any subpackages
 AC_OUTPUT

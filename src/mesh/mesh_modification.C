@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -40,6 +40,8 @@
 #include "libmesh/remote_elem.h"
 #include "libmesh/enum_to_string.h"
 #include "libmesh/unstructured_mesh.h"
+#include "libmesh/elem_side_builder.h"
+#include "libmesh/tensor_value.h"
 
 namespace
 {
@@ -181,10 +183,6 @@ void MeshTools::Modification::permute_elements(MeshBase & mesh)
 
       elem->permute(perm);
     }
-
-  // Neighbor links need to be cleared and reassigned to their new
-  // sides
-  mesh.find_neighbors();
 }
 
 
@@ -252,36 +250,28 @@ void MeshTools::Modification::translate (MeshBase & mesh,
 
 
 
-void MeshTools::Modification::rotate (MeshBase & mesh,
-                                      const Real phi,
-                                      const Real theta,
-                                      const Real psi)
+RealTensorValue
+MeshTools::Modification::rotate (MeshBase & mesh,
+                                 const Real phi,
+                                 const Real theta,
+                                 const Real psi)
 {
 #if LIBMESH_DIM == 3
-  const Real  p = -phi/180.*libMesh::pi;
-  const Real  t = -theta/180.*libMesh::pi;
-  const Real  s = -psi/180.*libMesh::pi;
-  const Real sp = std::sin(p), cp = std::cos(p);
-  const Real st = std::sin(t), ct = std::cos(t);
-  const Real ss = std::sin(s), cs = std::cos(s);
+  const auto R = RealTensorValue::intrinsic_rotation_matrix(phi, theta, psi);
 
-  // We follow the convention described at http://mathworld.wolfram.com/EulerAngles.html
-  // (equations 6-14 give the entries of the composite transformation matrix).
-  // The rotations are performed sequentially about the z, x, and z axes, in that order.
-  // A positive angle yields a counter-clockwise rotation about the axis in question.
   for (auto & node : mesh.node_ptr_range())
     {
-      const Point pt = *node;
-      const Real  x  = pt(0);
-      const Real  y  = pt(1);
-      const Real  z  = pt(2);
-      *node = Point(( cp*cs-sp*ct*ss)*x + ( sp*cs+cp*ct*ss)*y + (st*ss)*z,
-                    (-cp*ss-sp*ct*cs)*x + (-sp*ss+cp*ct*cs)*y + (st*cs)*z,
-                    ( sp*st)*x          + (-cp*st)*y          + (ct)*z   );
+      Point & pt = *node;
+      pt = R * pt;
     }
+
+  return R;
+
 #else
   libmesh_ignore(mesh, phi, theta, psi);
   libmesh_error_msg("MeshTools::Modification::rotate() requires libMesh to be compiled with LIBMESH_DIM==3");
+  // We'll never get here
+  return RealTensorValue();
 #endif
 }
 
@@ -377,6 +367,9 @@ void MeshTools::Modification::all_tri (MeshBase & mesh)
 #ifdef LIBMESH_ENABLE_UNIQUE_ID
     unique_id_type max_unique_id = mesh.parallel_max_unique_id();
 #endif
+
+    // For avoiding extraneous allocation when building side elements
+    std::unique_ptr<const Elem> elem_side, subside_elem;
 
     for (auto & elem : mesh.element_ptr_range())
       {
@@ -962,8 +955,10 @@ void MeshTools::Modification::all_tri (MeshBase & mesh)
           case EDGE4:
           case TRI3:
           case TRI6:
+          case TRI7:
           case TET4:
           case TET10:
+          case TET14:
           case INFEDGE2:
             // No way to split infinite quad/prism elements, so
             // hopefully no need to
@@ -1024,7 +1019,7 @@ void MeshTools::Modification::all_tri (MeshBase & mesh)
                   continue;
 
                 // Make a sorted list of node ids for elem->side(sn)
-                std::unique_ptr<Elem> elem_side = elem->build_side_ptr(sn);
+                elem->build_side_ptr(elem_side, sn);
                 std::vector<dof_id_type> elem_side_nodes(elem_side->n_nodes());
                 for (unsigned int esn=0,
                      n_esn = cast_int<unsigned int>(elem_side_nodes.size());
@@ -1037,7 +1032,7 @@ void MeshTools::Modification::all_tri (MeshBase & mesh)
                     {
                       for (auto subside : subelem[i]->side_index_range())
                         {
-                          std::unique_ptr<Elem> subside_elem = subelem[i]->build_side_ptr(subside);
+                          subelem[i]->build_side_ptr(subside_elem, subside);
 
                           // Make a list of *vertex* node ids for this subside, see if they are all present
                           // in elem->side(sn).  Note 1: we can't just compare elem->key(sn) to
@@ -1178,6 +1173,9 @@ void MeshTools::Modification::smooth (MeshBase & mesh,
   std::unordered_set<dof_id_type> boundary_node_ids =
     MeshTools::find_boundary_nodes (mesh);
 
+  // For avoiding extraneous element side allocation
+  ElemSideBuilder side_builder;
+
   for (unsigned int iter=0; iter<n_iterations; iter++)
     {
       /*
@@ -1216,10 +1214,9 @@ void MeshTools::Modification::smooth (MeshBase & mesh,
                         if ((elem->neighbor_ptr(s) != nullptr) &&
                             (elem->id() > elem->neighbor_ptr(s)->id()))
                           {
-                            std::unique_ptr<const Elem> side(elem->build_side_ptr(s));
-
-                            const Node & node0 = side->node_ref(0);
-                            const Node & node1 = side->node_ref(1);
+                            const Elem & side = side_builder(*elem, s);
+                            const Node & node0 = side.node_ref(0);
+                            const Node & node1 = side.node_ref(1);
 
                             Real node_weight = 1.;
                             // calculate the weight of the nodes
@@ -1266,7 +1263,7 @@ void MeshTools::Modification::smooth (MeshBase & mesh,
                             /*
                              * The value from the embedding matrix
                              */
-                            const float em_val = parent->embedding_matrix(c,nc,n);
+                            const Real em_val = parent->embedding_matrix(c,nc,n);
 
                             if (em_val != 0.)
                               point.add_scaled (parent->point(n), em_val);

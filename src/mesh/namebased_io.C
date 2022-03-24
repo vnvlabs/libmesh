@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -46,8 +46,15 @@
 #include <iomanip>
 #include <fstream>
 #include <vector>
-#include <sys/types.h> // getpid
-#include <unistd.h>
+#ifdef LIBMESH_HAVE_UNISTD_H
+#include <sys/types.h> // pid_t
+#include <unistd.h>  // for getpid() on Unix
+#endif
+#ifdef LIBMESH_HAVE_PROCESS_H
+#include <process.h> // for getpid() on Windows
+
+typedef int pid_t;
+#endif
 
 
 namespace libMesh

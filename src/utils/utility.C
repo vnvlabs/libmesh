@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -21,10 +21,15 @@
 #include "libmesh/libmesh_logging.h"
 
 // System includes
-#include <sys/time.h>
+#ifdef LIBMESH_HAVE_SYS_STAT_H
 #include <sys/stat.h>
+#endif
+#ifdef LIBMESH_HAVE_SYS_TYPES_H
 #include <sys/types.h>
-#include <unistd.h>
+#endif
+#ifdef LIBMESH_HAVE_UNISTD_H
+#include <unistd.h> // for getuid(), getpid()
+#endif
 #include <sstream>
 
 #ifdef LIBMESH_HAVE_SYS_UTSNAME_H

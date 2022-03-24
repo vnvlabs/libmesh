@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -907,7 +907,9 @@ static PetscErrorCode  DMSetUp_libMesh(DM dm)
     ierr = DMSNESSetFunction(dm, SNESFunction_DMlibMesh, (void *)dm); CHKERRQ(ierr);
     ierr = DMSNESSetJacobian(dm, SNESJacobian_DMlibMesh, (void *)dm); CHKERRQ(ierr);
     if (dlm->sys->nonlinear_solver->bounds || dlm->sys->nonlinear_solver->bounds_object)
-      ierr = DMSetVariableBounds(dm, DMVariableBounds_libMesh); CHKERRQ(ierr);
+      {
+        ierr = DMSetVariableBounds(dm, DMVariableBounds_libMesh); CHKERRQ(ierr);
+      }
   }
   else {
     /*

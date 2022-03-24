@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -64,9 +64,24 @@ public:
                bool single_precision=false);
 
   /**
-   * Destructor.
+   * ExodusII_IO special functions:
+   * - Can't be (default) copy constructed or assigned since they
+   *   contain a unique_ptr member.
+   * - Can't be (default) move assigned because the helper class
+       contains references.
+   * - The destructor is responsible for closing the file
    */
+  ExodusII_IO (ExodusII_IO &&) = default;
+  ExodusII_IO (const ExodusII_IO &) = delete;
+  ExodusII_IO & operator= (const ExodusII_IO &) = delete;
+  ExodusII_IO & operator= (ExodusII_IO &&) = delete;
   virtual ~ExodusII_IO ();
+
+  /**
+   * \returns The ExodusII API version, in "nodot" format (e.g. 822
+   * for 8.22), or 0 if ExodusII support is not available.
+   */
+  static int get_exodus_version();
 
   /**
    * This method implements reading a mesh from a specified file.
@@ -313,6 +328,20 @@ public:
                      std::vector<std::map<BoundaryInfo::BCTuple, Real>> & bc_vals);
 
   /**
+   * Similar to read_sideset_data(), but instead of creating one
+   * std::map per sideset per variable, creates a single map of (elem,
+   * side, boundary_id) tuples, and stores the exo file array indices
+   * for any/all sideset variables on that sideset (they are all the
+   * same). In cases where there are hundreds of sideset variables on
+   * a single sideset, it is more efficient to store the array indices
+   * in a quickly searchable data structure than to repeat the
+   * indexing once per variable as is done in the read_sideset_data()
+   * case.
+   */
+  void
+  get_sideset_data_indices (std::map<BoundaryInfo::BCTuple, unsigned int> & bc_array_indices);
+
+  /**
    * The Exodus format can also store values on nodesets. This can be
    * thought of as an alternative to defining a nodal variable
    * field on lower-dimensional elements making up a part of the
@@ -329,8 +358,8 @@ public:
   void
   write_nodeset_data (int timestep,
                       const std::vector<std::string> & var_names,
-                      std::vector<std::set<boundary_id_type>> & node_boundary_ids,
-                      std::vector<std::map<BoundaryInfo::NodeBCTuple, Real>> & bc_vals);
+                      const std::vector<std::set<boundary_id_type>> & node_boundary_ids,
+                      const std::vector<std::map<BoundaryInfo::NodeBCTuple, Real>> & bc_vals);
 
   /**
    * Read all the nodeset data at a particular timestep. TODO:
@@ -342,6 +371,20 @@ public:
                      std::vector<std::string> & var_names,
                      std::vector<std::set<boundary_id_type>> & node_boundary_ids,
                      std::vector<std::map<BoundaryInfo::NodeBCTuple, Real>> & bc_vals);
+
+  /**
+   * Similar to read_nodeset_data(), but instead of creating one
+   * std::map per nodeset per variable, creates a single map of
+   * (node_id, boundary_id) tuples, and stores the exo file array indices
+   * for any/all nodeset variables on that nodeset (they are all the
+   * same). In cases where there are hundreds of nodeset variables on
+   * a single nodeset, it is more efficient to store the array indices
+   * in a quickly searchable data structure than to repeat the
+   * indexing once per variable as is done in the read_nodeset_data()
+   * case.
+   */
+  void
+  get_nodeset_data_indices (std::map<BoundaryInfo::NodeBCTuple, unsigned int> & bc_array_indices);
 
   /**
    * Set the elemental variables in the Exodus file to be read into extra
@@ -422,6 +465,27 @@ public:
    * Return list of the global variable names
    */
   const std::vector<std::string> & get_global_var_names();
+
+  /**
+   * Returns a const reference to the elem_num_map, which is a vector
+   * that is created when a Mesh is read from file.  LibMesh will
+   * number its mesh elements consistently with the elem_num_map
+   * array, except that the indices in this array are 1-based, and
+   * libmesh always uses a 0-based numbering. For example, given:
+   * elem_num_map = [4,2,3,1]
+   * libmesh will assign the first element it reads from the Exodus
+   * file elem->id() == 3, the second will get elem->id() == 1, and so
+   * on. We note that not all Exodus files contain an elem_num_map,
+   * and in that case, calling this function will return a reference
+   * to a vector containing the 1-based identity array, [1,2,3,...]
+   */
+  const std::vector<int> & get_elem_num_map() const;
+
+  /**
+   * Idential to the behavior of get_elem_num_map(), but for the
+   * node_num_map instead.
+   */
+  const std::vector<int> & get_node_num_map() const;
 
 #ifdef LIBMESH_HAVE_EXODUS_API
   /**

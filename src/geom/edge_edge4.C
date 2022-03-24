@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -35,7 +35,7 @@ const int Edge4::nodes_per_edge;
 
 #ifdef LIBMESH_ENABLE_AMR
 
-const float Edge4::_embedding_matrix[Edge4::num_children][Edge4::num_nodes][Edge4::num_nodes] =
+const Real Edge4::_embedding_matrix[Edge4::num_children][Edge4::num_nodes][Edge4::num_nodes] =
   {
     // embedding matrix for child 0
 
@@ -93,11 +93,12 @@ bool Edge4::is_node_on_edge(const unsigned int,
 
 bool Edge4::has_affine_map() const
 {
-  if (!this->point(2).relative_fuzzy_equals
-      ((this->point(0)*2. + this->point(1))/3.))
+  Point v = this->point(1) - this->point(0);
+  if (!v.relative_fuzzy_equals
+      ((this->point(2) - this->point(0))*3, affine_tol))
     return false;
-  if (!this->point(3).relative_fuzzy_equals
-      ((this->point(0) + this->point(1)*2.)/3.))
+  if (!v.relative_fuzzy_equals
+      ((this->point(3) - this->point(0))*1.5, affine_tol))
     return false;
   return true;
 }
@@ -117,9 +118,9 @@ bool Edge4::has_invertible_map(Real tol) const
   const Point & x2 = this->point(2);
   const Point & x3 = this->point(3);
 
-  Point a = 27./16 * (x1 - x0 + 3.*(x2 - x3));
-  Point b = 18./16 * (x0 + x1 - x2 - x3);
-  Point c = 1./16  * (x0 - x1 + 27.*(x3 - x2));
+  Point a = Real(27)/16 * (x1 - x0 + 3*(x2 - x3));
+  Point b = Real(18)/16 * (x0 + x1 - x2 - x3);
+  Point c = Real(1)/16  * (x0 - x1 + 27*(x3 - x2));
 
   // Normalized midpoint value of Jacobian. If c==0, then dx/dxi(0) =
   // 0 and the Jacobian is either zero on the whole element, or

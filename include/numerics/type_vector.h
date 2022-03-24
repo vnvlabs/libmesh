@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -168,9 +168,14 @@ public:
   TypeVector (const TypeVector<T2> & p);
 
   /**
+   * Copy-constructor for the trivial case.
+   */
+  TypeVector (const TypeVector & p) = default;
+
+  /**
    * Destructor.
    */
-  ~TypeVector ();
+  ~TypeVector () = default;
 
   /**
    * Assign to this vector without creating a temporary.
@@ -436,7 +441,8 @@ public:
    * newline by default, however, this behavior can be controlled with
    * the \p newline parameter.
    */
-  void write_unformatted (std::ostream & out, const bool newline = true) const;
+  void write_unformatted (std::ostream & out_stream,
+                          const bool newline = true) const;
 
 protected:
 
@@ -553,14 +559,6 @@ TypeVector<T>::TypeVector (const TypeVector<T2> & p)
   // copy the nodes from vector p to me
   for (unsigned int i=0; i<LIBMESH_DIM; i++)
     _coords[i] = p._coords[i];
-}
-
-
-
-template <typename T>
-inline
-TypeVector<T>::~TypeVector ()
-{
 }
 
 
@@ -1167,6 +1165,29 @@ struct CompareTypes<TypeVector<T>, TypeVector<T2>>
 {
   typedef TypeVector<typename CompareTypes<T,T2>::supertype> supertype;
 };
+
+template <typename T, typename T2, typename std::enable_if<ScalarTraits<T>::value, int>::type = 0>
+TypeVector<typename CompareTypes<T, T2>::supertype>
+outer_product(const T & a, const TypeVector<T2> & b)
+{
+  TypeVector<typename CompareTypes<T, T2>::supertype> ret;
+  for (unsigned int i = 0; i < LIBMESH_DIM; i++)
+    ret(i) = a * libmesh_conj(b(i));
+
+  return ret;
+}
+
+template <typename T, typename T2, typename std::enable_if<ScalarTraits<T2>::value, int>::type = 0>
+TypeVector<typename CompareTypes<T, T2>::supertype>
+outer_product(const TypeVector<T> & a, const T2 & b)
+{
+  TypeVector<typename CompareTypes<T, T2>::supertype> ret;
+  const auto conj_b = libmesh_conj(b);
+  for (unsigned int i = 0; i < LIBMESH_DIM; i++)
+    ret(i) = a(i) * conj_b;
+
+  return ret;
+}
 } // namespace libMesh
 
 namespace std

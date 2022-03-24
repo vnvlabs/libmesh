@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -269,7 +269,7 @@ void EquationSystems::_read_impl (const std::string & name,
     else
       libmesh_deprecated();
 
-    START_LOG("read()","EquationSystems");
+    LOG_SCOPE("read()", "EquationSystems");
 
     // 2.)
     // Read the number of equation systems
@@ -354,8 +354,6 @@ void EquationSystems::_read_impl (const std::string & name,
       if (!read_legacy_format && partition_agnostic)
         _mesh.fix_broken_node_and_element_numbering();
     }
-
-  STOP_LOG("read()","EquationSystems");
 
   // Localize each system's data
   this->update();
@@ -581,13 +579,13 @@ void EquationSystems::write(const std::string & name,
 
 // template specialization
 
-template void EquationSystems::read<Number> (const std::string & name, const unsigned int read_flags, bool partition_agnostic);
-template void EquationSystems::read<Number> (const std::string & name, const XdrMODE mode, const unsigned int read_flags, bool partition_agnostic);
-template void EquationSystems::_read_impl<Number> (const std::string & name, const XdrMODE mode, const unsigned int read_flags, bool partition_agnostic);
+template LIBMESH_EXPORT void EquationSystems::read<Number> (const std::string & name, const unsigned int read_flags, bool partition_agnostic);
+template LIBMESH_EXPORT void EquationSystems::read<Number> (const std::string & name, const XdrMODE mode, const unsigned int read_flags, bool partition_agnostic);
+template LIBMESH_EXPORT void EquationSystems::_read_impl<Number> (const std::string & name, const XdrMODE mode, const unsigned int read_flags, bool partition_agnostic);
 #ifdef LIBMESH_USE_COMPLEX_NUMBERS
-template void EquationSystems::read<Real> (const std::string & name, const unsigned int read_flags, bool partition_agnostic);
-template void EquationSystems::read<Real> (const std::string & name, const XdrMODE mode, const unsigned int read_flags, bool partition_agnostic);
-template void EquationSystems::_read_impl<Real> (const std::string & name, const XdrMODE mode, const unsigned int read_flags, bool partition_agnostic);
+template LIBMESH_EXPORT void EquationSystems::read<Real> (const std::string & name, const unsigned int read_flags, bool partition_agnostic);
+template LIBMESH_EXPORT void EquationSystems::read<Real> (const std::string & name, const XdrMODE mode, const unsigned int read_flags, bool partition_agnostic);
+template LIBMESH_EXPORT void EquationSystems::_read_impl<Real> (const std::string & name, const XdrMODE mode, const unsigned int read_flags, bool partition_agnostic);
 #endif
 
 } // namespace libMesh

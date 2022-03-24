@@ -142,6 +142,7 @@ libmesh_SOURCES =  \
         src/geom/cell_pyramid5.C \
         src/geom/cell_tet.C \
         src/geom/cell_tet10.C \
+        src/geom/cell_tet14.C \
         src/geom/cell_tet4.C \
         src/geom/edge.C \
         src/geom/edge_edge2.C \
@@ -152,6 +153,7 @@ libmesh_SOURCES =  \
         src/geom/elem_cutter.C \
         src/geom/elem_quality.C \
         src/geom/elem_refinement.C \
+        src/geom/elem_side_builder.C \
         src/geom/face.C \
         src/geom/face_inf_quad.C \
         src/geom/face_inf_quad4.C \
@@ -167,6 +169,7 @@ libmesh_SOURCES =  \
         src/geom/face_tri3_shell.C \
         src/geom/face_tri3_subdivision.C \
         src/geom/face_tri6.C \
+        src/geom/face_tri7.C \
         src/geom/node.C \
         src/geom/node_elem.C \
         src/geom/plane.C \
@@ -219,10 +222,12 @@ libmesh_SOURCES =  \
         src/mesh/nemesis_io_helper.C \
         src/mesh/off_io.C \
         src/mesh/patch.C \
+        src/mesh/poly2tri_triangulator.C \
         src/mesh/postscript_io.C \
         src/mesh/replicated_mesh.C \
         src/mesh/tecplot_io.C \
         src/mesh/tetgen_io.C \
+        src/mesh/triangulator_interface.C \
         src/mesh/ucd_io.C \
         src/mesh/unstructured_mesh.C \
         src/mesh/unv_io.C \
@@ -243,6 +248,7 @@ libmesh_SOURCES =  \
         src/numerics/eigen_sparse_vector.C \
         src/numerics/laspack_matrix.C \
         src/numerics/laspack_vector.C \
+        src/numerics/lumped_mass_matrix.C \
         src/numerics/numeric_vector.C \
         src/numerics/petsc_matrix.C \
         src/numerics/petsc_preconditioner.C \
@@ -362,10 +368,12 @@ libmesh_SOURCES =  \
         src/solvers/eigen_time_solver.C \
         src/solvers/euler2_solver.C \
         src/solvers/euler_solver.C \
+        src/solvers/file_history_data.C \
         src/solvers/file_solution_history.C \
         src/solvers/first_order_unsteady_solver.C \
         src/solvers/laspack_linear_solver.C \
         src/solvers/linear_solver.C \
+        src/solvers/memory_history_data.C \
         src/solvers/memory_solution_history.C \
         src/solvers/newmark_solver.C \
         src/solvers/newton_solver.C \
@@ -382,6 +390,7 @@ libmesh_SOURCES =  \
         src/solvers/petscdmlibmeshimpl.C \
         src/solvers/second_order_unsteady_solver.C \
         src/solvers/slepc_eigen_solver.C \
+        src/solvers/solution_history.C \
         src/solvers/steady_solver.C \
         src/solvers/tao_optimization_solver.C \
         src/solvers/time_solver.C \

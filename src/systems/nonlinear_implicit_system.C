@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -65,6 +65,9 @@ void NonlinearImplicitSystem::clear ()
   // clear the nonlinear solver
   nonlinear_solver->clear();
 
+  // FIXME - this is necessary for petsc_auto_fieldsplit
+  // nonlinear_solver->init_names(*this);
+
   // clear the parent data
   Parent::clear();
 }
@@ -75,6 +78,9 @@ void NonlinearImplicitSystem::reinit ()
 {
   // re-initialize the nonlinear solver interface
   nonlinear_solver->clear();
+
+  // FIXME - this is necessary for petsc_auto_fieldsplit
+  // nonlinear_solver->init_names(*this);
 
   if (diff_solver.get())
     diff_solver->reinit();
@@ -153,7 +159,7 @@ void NonlinearImplicitSystem::set_solver_parameters ()
 void NonlinearImplicitSystem::solve ()
 {
   // Log how long the nonlinear solve takes.
-  START_LOG("solve()", "System");
+  LOG_SCOPE("solve()", "System");
 
   this->set_solver_parameters();
 
@@ -173,20 +179,17 @@ void NonlinearImplicitSystem::solve ()
       else
         nonlinear_solver->init();
 
+      // FIXME - this is necessary for petsc_auto_fieldsplit
+      // nonlinear_solver->init_names(*this);
+
       // Solve the nonlinear system.
-      const std::pair<unsigned int, Real> rval =
+      // Store the number of nonlinear iterations required to
+      // solve and the final residual.
+      std::tie(_n_nonlinear_iterations, _final_nonlinear_residual) =
         nonlinear_solver->solve (*matrix, *solution, *rhs,
                                  nonlinear_solver->relative_residual_tolerance,
                                  nonlinear_solver->max_linear_iterations);
-
-      // Store the number of nonlinear iterations required to
-      // solve and the final residual.
-      _n_nonlinear_iterations   = rval.first;
-      _final_nonlinear_residual = rval.second;
     }
-
-  // Stop logging the nonlinear solve
-  STOP_LOG("solve()", "System");
 
   // Update the system after the solve
   this->update();

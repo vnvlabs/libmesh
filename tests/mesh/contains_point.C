@@ -15,7 +15,7 @@ class ContainsPointTest : public CppUnit::TestCase
    * the specializes contains_point implementation in TRI3.
    */
 public:
-  CPPUNIT_TEST_SUITE( ContainsPointTest );
+  LIBMESH_CPPUNIT_TEST_SUITE( ContainsPointTest );
 
 #if LIBMESH_DIM > 2
   CPPUNIT_TEST( testContainsPointTri3 );
@@ -32,11 +32,13 @@ public:
   // TRI3 test
   void testContainsPointTri3()
   {
+    LOG_UNIT_TEST;
+
     Point a(3,1,2), b(1,2,3), c(2,3,1);
     containsPointTri3Helper(a, b, c, a);
 
     // Ben's 1st "small triangle" test case.
-    containsPointTri3Helper(a/5000., b/5000., c/5000., c/5000.);
+    containsPointTri3Helper(a/5000, b/5000, c/5000, c/5000);
 
     // Ben's 2nd "small triangle" test case.
     containsPointTri3Helper(Point(0.000808805, 0.0047284,  0.),
@@ -50,6 +52,8 @@ public:
   // TET4 test
   void testContainsPointTet4()
   {
+    LOG_UNIT_TEST;
+
     // Construct unit Tet.
     {
       Node zero  (0., 0., 0., 0);
@@ -63,8 +67,8 @@ public:
       elem->set_node(2) = &two;
       elem->set_node(3) = &three;
 
-      // The centroid must be inside the element.
-      CPPUNIT_ASSERT (elem->contains_point(elem->centroid()));
+      // The centroid (equal to vertex average for Tet4) must be inside the element.
+      CPPUNIT_ASSERT (elem->contains_point(elem->vertex_average()));
 
       // The vertices must be contained in the element.
       CPPUNIT_ASSERT (elem->contains_point(zero));
@@ -96,8 +100,8 @@ public:
       elem->set_node(2) = &two;
       elem->set_node(3) = &three;
 
-      // The centroid must be inside the element.
-      CPPUNIT_ASSERT (elem->contains_point(elem->centroid()));
+      // The centroid (equal to vertex average for Tet4) must be inside the element.
+      CPPUNIT_ASSERT (elem->contains_point(elem->vertex_average()));
 
       // The vertices must be contained in the element.
       CPPUNIT_ASSERT (elem->contains_point(zero));
@@ -138,8 +142,8 @@ protected:
     Point oop(va.cross(vb));
     Point oop_unit = oop.unit();
 
-    // The triangle must contain its own centroid
-    CPPUNIT_ASSERT (elem->contains_point(elem->centroid()));
+    // The centroid (equal to vertex average for Tri3) must be inside the element.
+    CPPUNIT_ASSERT (elem->contains_point(elem->vertex_average()));
 
     // triangle should contain all its vertices
     CPPUNIT_ASSERT (elem->contains_point(a));
@@ -147,7 +151,7 @@ protected:
     CPPUNIT_ASSERT (elem->contains_point(c));
 
     // out of plane from the centroid, should *not* be in the element
-    CPPUNIT_ASSERT (!elem->contains_point(elem->centroid() + std::sqrt(TOLERANCE) * oop_unit));
+    CPPUNIT_ASSERT (!elem->contains_point(elem->vertex_average() + std::sqrt(TOLERANCE) * oop_unit));
 
     // These points should be outside the triangle
     CPPUNIT_ASSERT (!elem->contains_point(a + va * TOLERANCE * 10));

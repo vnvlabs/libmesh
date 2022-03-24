@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -51,10 +51,8 @@ OptimizationSolver<T>::OptimizationSolver (sys_type & s) :
 
 template <typename T>
 inline
-OptimizationSolver<T>::~OptimizationSolver ()
-{
-  this->clear ();
-}
+OptimizationSolver<T>::~OptimizationSolver () = default;
+
 
 
 template <typename T>
@@ -86,6 +84,6 @@ OptimizationSolver<T>::build(sys_type & s, const SolverPackage solver_package)
 
 //------------------------------------------------------------------
 // Explicit instantiations
-template class OptimizationSolver<Number>;
+template class LIBMESH_EXPORT OptimizationSolver<Number>;
 
 } // namespace libMesh

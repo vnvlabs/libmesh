@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -173,7 +173,7 @@ public:
 
   /**
    * Fills \p v[i][qp] with the values of the \f$ i^{th} \f$
-   * shape functions, evaluated at points qp in p.  You must specify
+   * shape functions, evaluated at all points in p.  You must specify
    * element order directly.  \p v should already be the appropriate
    * size.
    *
@@ -453,6 +453,20 @@ public:
                        const std::vector<Real> * const weights = nullptr) override;
 
   /**
+  * This re-computes the dual shape function coefficients.
+  * The dual shape coefficients are utilized when calculating dual shape functions.
+  */
+  virtual void reinit_dual_shape_coeffs (const Elem * elem,
+                                         const std::vector<Point> & pts,
+                                         const std::vector<Real> & JxW) override;
+
+  /**
+   * This computes the default dual shape function coefficients.
+   * The dual shape coefficients are utilized when calculating dual shape functions.
+   */
+   virtual void reinit_default_dual_shape_coeffs (const Elem * elem) override;
+
+  /**
    * Reinitializes all the physical element-dependent data based on
    * the \p side of \p face.  The \p tolerance parameter is passed to
    * the involved call to \p inverse_map().  By default the shape
@@ -491,6 +505,16 @@ public:
                          const unsigned int s,
                          const std::vector<Point> & reference_side_points,
                          std::vector<Point> &       reference_points) override;
+
+  /**
+   * Computes the reference space quadrature points on the side of
+   * an element based on the edge quadrature points.
+   */
+  virtual void edge_map (const Elem * elem,
+                         const Elem * edge,
+                         const unsigned int e,
+                         const std::vector<Point> & reference_edge_points,
+                         std::vector<Point> &       reference_points);
 
   /**
    * Provides the class with the quadrature rule, which provides the
@@ -573,6 +597,30 @@ protected:
                                     const Elem * e);
 
   /**
+   * Fills \p dphidxi (and in higher dimensions, eta/zeta) derivative
+   * values for all shape functions, evaluated at all points in p.
+   * You must specify element order directly.  \p Internal arrays
+   * should already be the appropriate size.
+   *
+   * On a p-refined element, \p o should be the base order of the
+   * element if \p add_p_level is left \p true, or can be the base
+   * order of the element if \p add_p_level is set to \p false.
+   */
+  void all_shape_derivs(const Elem * elem,
+                        const Order o,
+                        const std::vector<Point> & p,
+                        const bool add_p_level = true);
+
+  /**
+   * A default implementation for all_shape_derivs
+   */
+  void default_all_shape_derivs (const Elem * elem,
+                                 const Order o,
+                                 const std::vector<Point> & p,
+                                 const bool add_p_level = true);
+
+
+  /**
    * Init \p dual_phi and potentially \p dual_dphi, \p dual_d2phi
    */
   void init_dual_shape_functions(unsigned int n_shapes, unsigned int n_qp);
@@ -646,7 +694,7 @@ protected:
    */
   ElemType last_side;
 
-  unsigned int last_edge;
+  ElemType last_edge;
 };
 
 
@@ -1241,6 +1289,86 @@ typedef FE<3,MONOMIAL> FEMonomial3D;
 
 }
 
+/**
+ * Helper functions for finite differenced derivatives in cases where
+ * analytical calculations haven't been done yet.
+ */
+template <typename OutputShape>
+OutputShape fe_fdm_deriv(const Elem * elem,
+                         const Order order,
+                         const unsigned int i,
+                         const unsigned int j,
+                         const Point & p,
+                         const bool add_p_level,
+                         OutputShape(*shape_func)
+                           (const Elem *, const Order,
+                            const unsigned int, const Point &,
+                            const bool));
+
+template <typename OutputShape>
+OutputShape
+fe_fdm_second_deriv(const Elem * elem,
+                    const Order order,
+                    const unsigned int i,
+                    const unsigned int j,
+                    const Point & p,
+                    const bool add_p_level,
+                    OutputShape(*deriv_func)
+                      (const Elem *, const Order,
+                       const unsigned int, const unsigned int,
+                       const Point &, const bool));
+
+/**
+ * Helper functions for rational basis functions.
+ */
+// shapes[i][j] is shape function phi_i at point p[j]
+void rational_fe_weighted_shapes(const Elem * elem,
+                                 const FEType underlying_fe_type,
+                                 std::vector<std::vector<Real>> & shapes,
+                                 const std::vector<Point> & p,
+                                 const bool add_p_level);
+
+// shapes[i][q] is shape function phi_i at point p[q]
+// derivs[j][i][q] is dphi_i/dxi_j at p[q]
+void rational_fe_weighted_shapes_derivs(const Elem * elem,
+                                        const FEType fe_type,
+                                        std::vector<std::vector<Real>> & shapes,
+                                        std::vector<std::vector<std::vector<Real>>> & derivs,
+                                        const std::vector<Point> & p,
+                                        const bool add_p_level);
+
+Real rational_fe_shape(const Elem & elem,
+                       const FEType underlying_fe_type,
+                       const unsigned int i,
+                       const Point & p,
+                       const bool add_p_level);
+
+Real rational_fe_shape_deriv(const Elem & elem,
+                             const FEType underlying_fe_type,
+                             const unsigned int i,
+                             const unsigned int j,
+                             const Point & p,
+                             const bool add_p_level);
+
+Real rational_fe_shape_second_deriv(const Elem & elem,
+                                    const FEType underlying_fe_type,
+                                    const unsigned int i,
+                                    const unsigned int j,
+                                    const Point & p,
+                                    const bool add_p_level);
+
+void rational_all_shapes (const Elem & elem,
+                          const FEType underlying_fe_type,
+                          const std::vector<Point> & p,
+                          std::vector<std::vector<Real>> & v,
+                          const bool add_p_level);
+
+void rational_all_shape_derivs (const Elem & elem,
+                                const FEType underlying_fe_type,
+                                const std::vector<Point> & p,
+                                std::vector<std::vector<Real>> * comps[3],
+                                const bool add_p_level);
+
 } // namespace libMesh
 
 #define LIBMESH_DEFAULT_VECTORIZED_FE(MyDim, MyType) \
@@ -1281,6 +1409,17 @@ void FE<MyDim,MyType>::shape_derivs                  \
 {                                                    \
   FE<MyDim,MyType>::default_shape_derivs             \
     (elem,o,i,j,p,v,add_p_level);                    \
+}                                                    \
+                                                     \
+template<>                                           \
+void FE<MyDim,MyType>::all_shape_derivs              \
+  (const Elem * elem,                                \
+   const Order o,                                    \
+   const std::vector<Point> & p,                     \
+   const bool add_p_level)                           \
+{                                                    \
+  this->default_all_shape_derivs                     \
+    (elem,o,p,add_p_level);                          \
 }
 
 

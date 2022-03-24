@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -37,6 +37,11 @@
 #include "libmesh/enum_elem_type.h"
 #include "libmesh/enum_to_string.h"
 
+#ifdef LIBMESH_ENABLE_INFINITE_ELEMENTS
+#include "libmesh/inf_fe.h"
+#include "libmesh/fe_interface_macros.h"
+#endif
+
 namespace libMesh
 {
 
@@ -46,7 +51,7 @@ FEAbstract::FEAbstract(const unsigned int d,
   dim(d),
   calculations_started(false),
   calculate_dual(false),
-  calculate_dual_coeff(true),
+  calculate_default_dual_coeff(true),
   calculate_nothing(false),
   calculate_map(false),
   calculate_phi(false),
@@ -64,9 +69,7 @@ FEAbstract::FEAbstract(const unsigned int d,
 }
 
 
-FEAbstract::~FEAbstract()
-{
-}
+FEAbstract::~FEAbstract() = default;
 
 
 std::unique_ptr<FEAbstract> FEAbstract::build(const unsigned int dim,
@@ -371,6 +374,18 @@ void FEAbstract::get_refspace_nodes(const ElemType itemType, std::vector<Point> 
         nodes[5] = Point (0.,.5,0.);
         return;
       }
+    case TRI7:
+      {
+        nodes.resize(7);
+        nodes[0] = Point (0.,0.,0.);
+        nodes[1] = Point (1.,0.,0.);
+        nodes[2] = Point (0.,1.,0.);
+        nodes[3] = Point (.5,0.,0.);
+        nodes[4] = Point (.5,.5,0.);
+        nodes[5] = Point (0.,.5,0.);
+        nodes[6] = Point (1./3.,1./3.,0.);
+        return;
+      }
     case QUAD4:
     case QUADSHELL4:
       {
@@ -431,6 +446,25 @@ void FEAbstract::get_refspace_nodes(const ElemType itemType, std::vector<Point> 
         nodes[7] = Point (0.,0.,.5);
         nodes[8] = Point (.5,0.,.5);
         nodes[9] = Point (0.,.5,.5);
+        return;
+      }
+    case TET14:
+      {
+        nodes.resize(14);
+        nodes[0] = Point (0.,0.,0.);
+        nodes[1] = Point (1.,0.,0.);
+        nodes[2] = Point (0.,1.,0.);
+        nodes[3] = Point (0.,0.,1.);
+        nodes[4] = Point (.5,0.,0.);
+        nodes[5] = Point (.5,.5,0.);
+        nodes[6] = Point (0.,.5,0.);
+        nodes[7] = Point (0.,0.,.5);
+        nodes[8] = Point (.5,0.,.5);
+        nodes[9] = Point (0.,.5,.5);
+        nodes[10] = Point (1/Real(3),1/Real(3),0.);
+        nodes[11] = Point (1/Real(3),0.,1/Real(3));
+        nodes[12] = Point (1/Real(3),1/Real(3),1/Real(3));
+        nodes[13] = Point (0.,1/Real(3),1/Real(3));
         return;
       }
     case HEX8:
@@ -668,6 +702,7 @@ bool FEAbstract::on_reference_element(const Point & p, const ElemType t, const R
     case TRI3:
     case TRISHELL3:
     case TRI6:
+    case TRI7:
       {
         // The reference triangle is isosceles
         // and is bound by xi=0, eta=0, and xi+eta=1.
@@ -699,6 +734,7 @@ bool FEAbstract::on_reference_element(const Point & p, const ElemType t, const R
 
     case TET4:
     case TET10:
+    case TET14:
       {
         // The reference tetrahedral is isosceles
         // and is bound by xi=0, eta=0, zeta=0,
@@ -884,8 +920,34 @@ void FEAbstract::compute_node_constraints (NodeConstraints & constraints,
   if (elem->subactive())
     return;
 
+
+#ifdef LIBMESH_ENABLE_INFINITE_ELEMENTS
+  if (elem->infinite())
+    {
+      const FEType fe_t(elem->default_order(), FEMap::map_fe_type(*elem));
+
+      // expand the infinite_compute_constraint in its template-arguments.
+      switch(Dim)
+      {
+         case 2:
+            {
+            inf_fe_family_mapping_switch(2, inf_compute_node_constraints (constraints, elem) , ,; break;);
+            break;
+          }
+         case 3:
+            {
+            inf_fe_family_mapping_switch(3, inf_compute_node_constraints (constraints, elem) , ,; break;);
+            break;
+            }
+         default:
+           libmesh_error_msg("Invalid dim = " << Dim);
+      }
+      return;
+    }
+
+#endif
   const FEFamily mapping_family = FEMap::map_fe_type(*elem);
-  const FEType fe_type(elem->default_order(), mapping_family);
+  const FEType fe_type(elem->default_side_order(), mapping_family);
 
   // Pull objects out of the loop to reduce heap operations
   std::vector<const Node *> my_nodes, parent_nodes;
@@ -1034,7 +1096,7 @@ void FEAbstract::compute_periodic_node_constraints (NodeConstraints & constraint
   const unsigned int Dim = elem->dim();
 
   const FEFamily mapping_family = FEMap::map_fe_type(*elem);
-  const FEType fe_type(elem->default_order(), mapping_family);
+  const FEType fe_type(elem->default_side_order(), mapping_family);
 
   // Pull objects out of the loop to reduce heap operations
   std::vector<const Node *> my_nodes, neigh_nodes;

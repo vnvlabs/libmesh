@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -36,6 +36,7 @@ namespace libMesh
 
 // Forward Declarations
 class ErrorVector;
+enum PartitionerType : int;
 
 /**
  * The \p Partitioner class provides a uniform interface for
@@ -65,6 +66,13 @@ public:
   Partitioner & operator= (const Partitioner &) = default;
   Partitioner & operator= (Partitioner &&) = default;
   virtual ~Partitioner() = default;
+
+  /**
+   * Builds a \p Partitioner of the type specified by
+   * \p partitioner_type
+   */
+  static std::unique_ptr<Partitioner>
+  build(const PartitionerType solver_package);
 
   /**
    * \returns A copy of this partitioner wrapped in a smart pointer.
@@ -259,7 +267,7 @@ protected:
   /**
    * Assign the computed partitioning to the mesh.
    */
-  void assign_partitioning (const MeshBase & mesh, const std::vector<dof_id_type> & parts);
+  void assign_partitioning (MeshBase & mesh, const std::vector<dof_id_type> & parts);
 
   /**
    * The weights that might be used for partitioning.

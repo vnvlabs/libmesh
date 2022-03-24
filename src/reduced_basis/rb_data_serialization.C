@@ -39,7 +39,9 @@
 // C++ includes
 #include <iostream>
 #include <fstream>
-#include <unistd.h>
+#ifdef LIBMESH_HAVE_UNISTD_H
+#include <unistd.h> // for close()
+#endif
 #include <fcntl.h>
 
 namespace libMesh
@@ -634,6 +636,16 @@ void add_rb_eim_evaluation_data_to_builder(RBEIMEvaluation & rb_eim_evaluation,
                                                  rb_eim_evaluation.get_interpolation_points_subdomain_id(i));
   }
 
+  // Interpolation points boundary IDs, relevant if the parametrized function is defined on mesh sides
+  if (rb_eim_evaluation.get_parametrized_function().on_mesh_sides())
+  {
+    auto interpolation_points_boundary_id_list =
+      rb_eim_evaluation_builder.initInterpolationBoundaryId(n_bfs);
+    for (unsigned int i=0; i<n_bfs; ++i)
+      interpolation_points_boundary_id_list.set(i,
+                                                 rb_eim_evaluation.get_interpolation_points_boundary_id(i));
+  }
+
   // Interpolation points element IDs
   {
     auto interpolation_points_elem_id_list =
@@ -641,6 +653,16 @@ void add_rb_eim_evaluation_data_to_builder(RBEIMEvaluation & rb_eim_evaluation,
     for (unsigned int i=0; i<n_bfs; ++i)
       interpolation_points_elem_id_list.set(i,
                                             rb_eim_evaluation.get_interpolation_points_elem_id(i));
+  }
+
+  // Interpolation points side indices, relevant if the parametrized function is defined on mesh sides
+  if (rb_eim_evaluation.get_parametrized_function().on_mesh_sides())
+  {
+    auto interpolation_points_side_index_list =
+      rb_eim_evaluation_builder.initInterpolationSideIndex(n_bfs);
+    for (unsigned int i=0; i<n_bfs; ++i)
+      interpolation_points_side_index_list.set(i,
+                                               rb_eim_evaluation.get_interpolation_points_side_index(i));
   }
 
   // Interpolation points quadrature point indices
@@ -668,10 +690,10 @@ void add_rb_eim_evaluation_data_to_builder(RBEIMEvaluation & rb_eim_evaluation,
       }
   }
 
-  // Optionally store EIM rhs values for the training set
+  // Optionally store EIM solutions for the training set
   if (rb_eim_evaluation.get_parametrized_function().is_lookup_table)
     {
-      const std::vector<DenseVector<Number>> & eim_solutions = rb_eim_evaluation.eim_solutions;
+      const std::vector<DenseVector<Number>> & eim_solutions = rb_eim_evaluation.get_eim_solutions_for_training_set();
 
       auto eim_rhs_list_outer =
         rb_eim_evaluation_builder.initEimSolutionsForTrainingSet(eim_solutions.size());
@@ -688,6 +710,88 @@ void add_rb_eim_evaluation_data_to_builder(RBEIMEvaluation & rb_eim_evaluation,
             }
         }
     }
+
+  // Optionally store observation points data for the EIM basis functions
+  unsigned int n_obs_pts = rb_eim_evaluation.get_n_observation_points();
+  if (n_obs_pts > 0)
+    {
+      {
+        auto observation_points_list =
+          rb_eim_evaluation_builder.initObservationPointsXyz(n_obs_pts);
+
+        const std::vector<Point> & obs_pts = rb_eim_evaluation.get_observation_points();
+        for (unsigned int i=0; i < n_obs_pts; ++i)
+          add_point_to_builder(obs_pts[i],
+                               observation_points_list[i]);
+      }
+
+      {
+        const std::vector<std::vector<std::vector<Number>>> & observation_values = rb_eim_evaluation.get_observation_values();
+        auto obs_values_list_outer =
+          rb_eim_evaluation_builder.initObservationPointsValues(observation_values.size());
+
+        for (auto i : make_range(observation_values.size()))
+          {
+            auto obs_values_list_middle = obs_values_list_outer.init(i, observation_values[i].size());
+
+            for (auto j : make_range(observation_values[i].size()))
+              {
+                auto obs_values_list_inner = obs_values_list_middle.init(j, observation_values[i][j].size());
+                for (auto k : make_range(observation_values[i][j].size()))
+                  {
+                    set_scalar_in_list(obs_values_list_inner,
+                                       k,
+                                       observation_values[i][j][k]);
+                  }
+              }
+          }
+      }
+    }
+
+  // The shape function values at the interpolation points. This can be used to evaluate nodal data
+  // at EIM interpolation points, which are at quadrature points.
+  {
+    auto interpolation_points_list_outer =
+      rb_eim_evaluation_builder.initInterpolationPhiValues(n_bfs);
+    for (unsigned int i=0; i < n_bfs; ++i)
+      {
+        const std::vector<Real> & phi_i_qp_vec = rb_eim_evaluation.get_interpolation_points_phi_i_qp(i);
+        auto interpolation_points_list_inner = interpolation_points_list_outer.init(i, phi_i_qp_vec.size());
+
+        for (unsigned int j : index_range(phi_i_qp_vec))
+          {
+            // Here we can use set() instead of set_scalar_in_list() because
+            // phi stores real-valued data only.
+            interpolation_points_list_inner.set(j, phi_i_qp_vec[j]);
+          }
+      }
+  }
+
+  // Initialize EIM spatial indices for the interpolation points, and if there are
+  // any spatial indices then we store them in the buffer.
+  rb_eim_evaluation.initialize_interpolation_points_spatial_indices();
+  if (rb_eim_evaluation.get_n_interpolation_points_spatial_indices() > 0)
+  {
+    libmesh_error_msg_if(n_bfs != rb_eim_evaluation.get_n_interpolation_points_spatial_indices(),
+                         "Error: Number of spatial indices should match number of EIM basis functions");
+
+    auto interpolation_points_spatial_indices_builder =
+      rb_eim_evaluation_builder.initInterpolationSpatialIndices(n_bfs);
+    for (unsigned int i=0; i<n_bfs; ++i)
+      {
+        const std::vector<unsigned int> & spatial_indices =
+          rb_eim_evaluation.get_interpolation_points_spatial_indices(i);
+        unsigned int n_spatial_indices = spatial_indices.size();
+
+        auto spatial_indices_builder =
+          interpolation_points_spatial_indices_builder.init(i, n_spatial_indices);
+
+        for (auto j : make_range(n_spatial_indices))
+          {
+            spatial_indices_builder.set(j, spatial_indices[j]);
+          }
+      }
+  }
 }
 
 #if defined(LIBMESH_HAVE_SLEPC) && (LIBMESH_HAVE_GLPK)

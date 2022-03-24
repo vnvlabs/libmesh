@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -29,8 +29,7 @@ DirectSolutionTransfer::DirectSolutionTransfer(const libMesh::Parallel::Communic
   SolutionTransfer(comm_in)
 {}
 
-DirectSolutionTransfer::~DirectSolutionTransfer()
-{}
+DirectSolutionTransfer::~DirectSolutionTransfer() = default;
 
 void
 DirectSolutionTransfer::transfer(const Variable & from_var,

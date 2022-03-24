@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -72,7 +72,7 @@ Point InfFEMap::map (const unsigned int dim,
   // NOTE: the form used below can be implemented to yield
   // more general/flexible mappings, but the current form is
   // used e.g. for \p inverse_map() and \p reinit() explicitly.
-  return (base_point-inf_elem->origin())*2./(1.-v)+inf_elem->origin();
+  return (base_point-inf_elem->origin())*2/(1-v)+inf_elem->origin();
 
 #if 0 // Leave this documented, but w/o unreachable-code warnings
   const Order radial_mapping_order (InfFERadial::mapping_order());

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -76,7 +76,7 @@ public:
   /**
    * Prints the reference information, by default to \p libMesh::out.
    */
-  static void print_info (std::ostream & out = libMesh::out);
+  static void print_info (std::ostream & out_stream = libMesh::out);
 
   /**
    * Prints the number of outstanding (created, but not yet

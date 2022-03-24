@@ -38,7 +38,7 @@ public:
 
     const Real & x = p(0);
     const Real & y = p(1);
-    const Point centroid = c.get_elem().centroid();
+    const Point centroid = c.get_elem().vertex_average();
     const Real sign = centroid(1)/std::abs(centroid(1));
 
     // For testing we want something discontinuous on the slit,
@@ -71,7 +71,7 @@ class SlitMeshTest : public CppUnit::TestCase {
    * each node.
    */
 public:
-  CPPUNIT_TEST_SUITE( SlitMeshTest );
+  LIBMESH_CPPUNIT_TEST_SUITE( SlitMeshTest );
 
 #if LIBMESH_DIM > 1
   CPPUNIT_TEST( testMesh );
@@ -192,6 +192,8 @@ public:
 
   void testMesh()
   {
+    LOG_UNIT_TEST;
+
     // There'd better be 8 elements
     CPPUNIT_ASSERT_EQUAL( (dof_id_type)8, _mesh->n_elem() );
 
@@ -225,7 +227,7 @@ class SlitMeshRefinedMeshTest : public SlitMeshTest {
    * shared on the underlying quads, and so on.
    */
 public:
-  CPPUNIT_TEST_SUITE( SlitMeshRefinedMeshTest );
+  LIBMESH_CPPUNIT_TEST_SUITE( SlitMeshRefinedMeshTest );
 
 #if LIBMESH_DIM > 1
   CPPUNIT_TEST( testMesh );
@@ -249,6 +251,8 @@ public:
 
   void testMesh()
   {
+    LOG_UNIT_TEST;
+
 #ifdef LIBMESH_ENABLE_AMR
     // We should have 40 total and 32 active elements.
     CPPUNIT_ASSERT_EQUAL( (dof_id_type)40, _mesh->n_elem() );
@@ -267,7 +271,7 @@ class SlitMeshRefinedSystemTest : public SlitMeshTest {
    * interpolated after refinement.
    */
 public:
-  CPPUNIT_TEST_SUITE( SlitMeshRefinedSystemTest );
+  LIBMESH_CPPUNIT_TEST_SUITE( SlitMeshRefinedSystemTest );
 
 #if LIBMESH_DIM > 1
   CPPUNIT_TEST( testMesh );
@@ -323,6 +327,8 @@ public:
 
   void testMesh()
   {
+    LOG_UNIT_TEST;
+
 #ifdef LIBMESH_ENABLE_AMR
     // We should have 168 total and 128 active elements.
     CPPUNIT_ASSERT_EQUAL( (dof_id_type)(8+32+128), _mesh->n_elem() );
@@ -335,6 +341,8 @@ public:
 
   void testSystem()
   {
+    LOG_UNIT_TEST;
+
     SlitFunc slitfunc;
 
     unsigned int dim = 2;
@@ -369,6 +377,8 @@ public:
 
   void testRestart()
   {
+    LOG_UNIT_TEST;
+
     SlitFunc slitfunc;
 
     _mesh->write("slit_mesh.xda");
@@ -402,7 +412,7 @@ public:
 
     for (const auto & elem : mesh2.active_local_element_ptr_range())
       {
-        const Elem * mesh1_elem = (*locator)(elem->centroid());
+        const Elem * mesh1_elem = (*locator)(elem->vertex_average());
         if (mesh1_elem)
           {
             CPPUNIT_ASSERT_EQUAL( elem->unique_id(),

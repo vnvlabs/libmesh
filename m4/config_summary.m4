@@ -49,8 +49,8 @@ for method in ${METHODS}; do
      dnl blank line
      AS_ECHO([])
 done
-AS_ECHO(["Any warnings-to-errors flags....... : $ANY_WERROR_FLAG"])
-AS_ECHO(["Any extra paranoid warning flags... : $ANY_PARANOID_FLAGS"])
+AS_ECHO(["Any warnings-to-errors flags....... : $ACSM_ANY_WERROR_FLAG"])
+AS_ECHO(["Any extra paranoid warning flags... : $ACSM_ANY_PARANOID_FLAGS"])
 AS_ECHO(["Install dir........................ : $prefix"])
 AS_ECHO(["Build user......................... : $USER"])
 AS_ECHO(["Build host......................... : $BUILD_HOST"])
@@ -81,6 +81,7 @@ AS_ECHO(["  node constraints................. : $enablenodeconstraint"])
 AS_ECHO(["  parallel mesh.................... : $enableparmesh"])
 AS_ECHO(["  performance logging.............. : $enableperflog"])
 AS_ECHO(["  periodic boundary conditions..... : $enableperiodic"])
+AS_ECHO(["  real number type................. : $enablerealprecision"])
 AS_ECHO(["  reference counting............... : $enablerefct"])
 AS_ECHO(["  shape function 2nd derivatives... : $enablesecond"])
 AS_ECHO(["  stack trace files................ : $enabletracefiles"])
@@ -136,6 +137,7 @@ AS_IF([test "x$enableoptional" = "xyes"],
         AS_ECHO(["  petsc............................ : $enablepetsc"])
         AS_IF([test "x$enablepetsc" = "xyes"],
               [AS_ECHO(["     version....................... : $petscversion"])])
+        AS_ECHO(["  poly2tri......................... : $enablepoly2tri"])
         AS_ECHO(["  qhull............................ : $enableqhull"])
         AS_ECHO(["  sfcurves......................... : $enablesfc"])
         AS_ECHO(["  slepc............................ : $enableslepc"])
@@ -163,10 +165,17 @@ AS_IF([test "x$enableoptional" = "xyes"],
         AS_IF([test "x$enablevtk" = "xyes"],
               [AS_ECHO(["     version....................... : $vtkversion"])])
         AS_ECHO([])
-        AS_ECHO(["  vnv.............................. : $enablevnv"])
+        
+	AS_ECHO(["  vnv.............................. : $enablevnv"])
         AS_IF([test "x$enablevnv" = "xyes"],
               [AS_ECHO(["     version....................... : unknown"])])
         AS_ECHO([])
+	
+	AS_IF([test "x$libmesh_contrib_INCLUDES" != "x"],
+              [
+                AS_ECHO(["  libmesh_contrib_INCLUDES......... : $libmesh_contrib_INCLUDES"])
+                AS_ECHO([])
+              ])
         AS_IF([test "x$libmesh_optional_INCLUDES" != "x"],
               [
                 AS_ECHO(["  libmesh_optional_INCLUDES........ : $libmesh_optional_INCLUDES"])

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -35,7 +35,7 @@ const int Edge3::nodes_per_edge;
 
 #ifdef LIBMESH_ENABLE_AMR
 
-const float Edge3::_embedding_matrix[2][3][3] =
+const Real Edge3::_embedding_matrix[2][3][3] =
   {
     // embedding matrix for child 0
     {
@@ -94,8 +94,9 @@ bool Edge3::is_node_on_edge(const unsigned int,
 
 bool Edge3::has_affine_map() const
 {
-  return (this->point(2).relative_fuzzy_equals
-          ((this->point(0) + this->point(1))/2));
+  Point v = this->point(1) - this->point(0);
+  return (v.relative_fuzzy_equals
+          ((this->point(2) - this->point(0))*2, affine_tol));
 }
 
 
@@ -108,7 +109,7 @@ bool Edge3::has_invertible_map(Real tol) const
   // The "Jacobian vector" (dx/dxi, dy/dxi, dz/dxi) is:
   // j(xi) := a*xi + b, where
   Point a = this->point(0) + this->point(1) - 2 * this->point(2);
-  Point b = .5 * (this->point(1) - this->point(0));
+  Point b = Real(.5) * (this->point(1) - this->point(0));
 
   // Now we solve for the point xi_m where j(xi_m) \cdot j(0) = 0.
   // If this occurs somewhere on the reference element, then the

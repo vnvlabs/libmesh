@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -294,7 +294,7 @@ protected:
   // };
 
   typedef nanoflann::KDTreeSingleIndexAdaptor<nanoflann::L2_Simple_Adaptor<Real, PointListAdaptor<KDDim>>,
-                                              PointListAdaptor<KDDim>, KDDim> kd_tree_t;
+                                              PointListAdaptor<KDDim>, KDDim, std::size_t> kd_tree_t;
 
   mutable std::unique_ptr<kd_tree_t> _kd_tree;
 

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -232,10 +232,6 @@ void set_system_parameters(HeatSystem &system, FEMParameters &param)
         else
         libmesh_error_msg("Unrecognized solution history type: " << param.solution_history_type);
 
-        // The Memory/File Solution History object we will set the system SolutionHistory object to
-        FileSolutionHistory heatsystem_solution_history(system);
-        system.time_solver->set_solution_history(heatsystem_solution_history);
-
       }
     }
   else
@@ -312,6 +308,7 @@ void set_system_parameters(HeatSystem &system, FEMParameters &param)
     }
 }
 
+#ifdef LIBMESH_ENABLE_AMR
 std::unique_ptr<AdjointRefinementEstimator>
 build_adjoint_refinement_error_estimator(QoISet &qois, FEMPhysics* supplied_physics, FEMParameters &/*param*/)
 {
@@ -334,6 +331,7 @@ build_adjoint_refinement_error_estimator(QoISet &qois, FEMPhysics* supplied_phys
 
   return adjoint_refinement_estimator;
 }
+#endif // LIBMESH_ENABLE_AMR
 
 // The main program.
 int main (int argc, char ** argv)
@@ -697,6 +695,9 @@ int main (int argc, char ** argv)
           primal_solution.swap(dual_solution_1);
         }
       // End adjoint timestep loop
+
+      // Reset the time before looping over time again
+      system.time = 0.0;
 
       // Now that we have computed both the primal and adjoint solutions, we can compute the goal-oriented error estimates.
       // For this, we will need to build a ARefEE error estimator object, and supply a pointer to the 'true physics' object,

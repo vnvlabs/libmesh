@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -126,7 +126,16 @@ unsigned int hierarchic_n_dofs(const ElemType t, const Order o)
       libmesh_assert_less (o, 2);
       libmesh_fallthrough();
     case TRI6:
+    case TRI7:
       return ((o+1)*(o+2)/2);
+    case TET4:
+      libmesh_assert_less (o, 2);
+      libmesh_fallthrough();
+    case TET10:
+      libmesh_assert_less (o, 3);
+      libmesh_fallthrough();
+    case TET14:
+      return ((o+1)*(o+2)*(o+3)/6);
     case INVALID_ELEM:
       return 0;
     default:
@@ -165,6 +174,10 @@ unsigned int hierarchic_n_dofs_at_node(const ElemType t,
       libmesh_assert_less (o, 2);
       libmesh_fallthrough();
     case TRI6:
+      // Internal DoFs are associated with the elem on a Tri6, or node 6 on a Tri7
+      libmesh_assert_less (n, 6);
+      libmesh_fallthrough();
+    case TRI7:
       switch (n)
         {
         case 0:
@@ -177,9 +190,10 @@ unsigned int hierarchic_n_dofs_at_node(const ElemType t,
         case 5:
           return (o-1);
 
-          // Internal DoFs are associated with the elem, not its nodes
+        case 6:
+          return ((o-1)*(o-2)/2);
         default:
-          libmesh_error_msg("ERROR: Invalid node ID " << n << " selected for TRI6!");
+          libmesh_error_msg("ERROR: Invalid node ID " << n << " selected for TRI!");
         }
     case QUAD4:
     case QUADSHELL4:
@@ -260,6 +274,43 @@ unsigned int hierarchic_n_dofs_at_node(const ElemType t,
           libmesh_error_msg("ERROR: Invalid node ID " << n << " selected for HEX8/20/27!");
         }
 
+    case TET4:
+      libmesh_assert_less (o, 2);
+      libmesh_assert_less (n, 4);
+      libmesh_fallthrough();
+    case TET10:
+      libmesh_assert_less (o, 3);
+      libmesh_assert_less (n, 10);
+      libmesh_fallthrough();
+    case TET14:
+      libmesh_assert_less (n, 14);
+      switch (n)
+        {
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+          return 1;
+
+        case 4:
+        case 5:
+        case 6:
+        case 7:
+        case 8:
+        case 9:
+          return (o-1);
+
+        case 10:
+        case 11:
+        case 12:
+        case 13:
+          return ((o-1)*(o-2)/2);
+
+        default:
+          libmesh_error_msg("ERROR: Invalid node ID " << n << " selected for TET!");
+        }
+
+
     case INVALID_ELEM:
       return 0;
 
@@ -289,6 +340,8 @@ unsigned int hierarchic_n_dofs_per_elem(const ElemType t,
       return 0;
     case TRI6:
       return ((o-1)*(o-2)/2);
+    case TRI7:
+      return 0;
     case QUAD8:
     case QUADSHELL8:
     case QUAD9:
@@ -299,6 +352,14 @@ unsigned int hierarchic_n_dofs_per_elem(const ElemType t,
       return 0;
     case HEX27:
       return ((o-1)*(o-1)*(o-1));
+    case TET4:
+      libmesh_assert_less (o, 2);
+      libmesh_fallthrough();
+    case TET10:
+      libmesh_assert_less (o, 3);
+      libmesh_fallthrough();
+    case TET14:
+      return ((o-3)*(o-2)*(o-1)/6);
     case INVALID_ELEM:
       return 0;
     default:

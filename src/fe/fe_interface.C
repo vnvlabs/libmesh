@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -1677,6 +1677,74 @@ Real FEInterface::shape_deriv(const FEType & fe_t,
 
 
 
+template<>
+void FEInterface::shape_derivs<Real>(const FEType & fe_t,
+                                     const Elem * elem,
+                                     const unsigned int i,
+                                     const unsigned int j,
+                                     const std::vector<Point> & p,
+                                     std::vector<Real> & dphi,
+                                     const bool add_p_level)
+{
+  const Order o = fe_t.order;
+
+  switch(elem->dim())
+    {
+    case 0:
+      fe_scalar_vec_error_switch(0, shape_derivs(elem,o,i,j,p,dphi,add_p_level), , ; break;);
+      break;
+    case 1:
+      fe_scalar_vec_error_switch(1, shape_derivs(elem,o,i,j,p,dphi,add_p_level), , ; break;);
+      break;
+    case 2:
+      fe_scalar_vec_error_switch(2, shape_derivs(elem,o,i,j,p,dphi,add_p_level), , ; break;);
+      break;
+    case 3:
+      fe_scalar_vec_error_switch(3, shape_derivs(elem,o,i,j,p,dphi,add_p_level), , ; break;);
+      break;
+    default:
+      libmesh_error_msg("Invalid dimension = " << elem->dim());
+    }
+
+  return;
+}
+
+
+
+template<>
+void FEInterface::shape_derivs<RealGradient>(const FEType & fe_t,
+                                             const Elem * elem,
+                                             const unsigned int i,
+                                             const unsigned int j,
+                                             const std::vector<Point> & p,
+                                             std::vector<RealGradient> & dphi,
+                                             const bool add_p_level)
+{
+  const Order o = fe_t.order;
+
+  switch(elem->dim())
+    {
+    case 0:
+      fe_vector_scalar_error_switch(0, shape_derivs(elem,o,i,j,p,dphi,add_p_level), , ; break;);
+      break;
+    case 1:
+      fe_vector_scalar_error_switch(1, shape_derivs(elem,o,i,j,p,dphi,add_p_level), , ; break;);
+      break;
+    case 2:
+      fe_vector_scalar_error_switch(2, shape_derivs(elem,o,i,j,p,dphi,add_p_level), , ; break;);
+      break;
+    case 3:
+      fe_vector_scalar_error_switch(3, shape_derivs(elem,o,i,j,p,dphi,add_p_level), , ; break;);
+      break;
+    default:
+      libmesh_error_msg("Invalid dimension = " << elem->dim());
+    }
+
+  return;
+}
+
+
+
 FEInterface::shape_deriv_ptr
 FEInterface::shape_deriv_function(const unsigned int dim,
                                   const FEType & fe_t,
@@ -2227,7 +2295,6 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
   switch (fe_t.family)
     {
     case LAGRANGE:
-    case L2_LAGRANGE: // TODO: L2_LAGRANGE can have higher "max_order" than LAGRANGE
     case LAGRANGE_VEC:
       switch (el_t)
         {
@@ -2240,6 +2307,8 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
           return 1;
         case TRI6:
           return 2;
+        case TRI7:
+          return 3;
         case QUAD4:
         case QUADSHELL4:
           return 1;
@@ -2251,6 +2320,8 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
           return 1;
         case TET10:
           return 2;
+        case TET14:
+          return 3;
         case HEX8:
           return 1;
         case HEX20:
@@ -2271,6 +2342,8 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         }
       break;
     case MONOMIAL:
+    case L2_LAGRANGE:
+    case L2_HIERARCHIC:
     case MONOMIAL_VEC:
       switch (el_t)
         {
@@ -2280,6 +2353,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case TRI3:
         case TRISHELL3:
         case TRI6:
+        case TRI7:
         case QUAD4:
         case QUADSHELL4:
         case QUAD8:
@@ -2287,6 +2361,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case QUAD9:
         case TET4:
         case TET10:
+        case TET14:
         case HEX8:
         case HEX20:
         case HEX27:
@@ -2314,6 +2389,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case TRISHELL3:
           return 1;
         case TRI6:
+        case TRI7:
           return 6;
         case QUAD4:
         case QUADSHELL4:
@@ -2325,6 +2401,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case TET4:
           return 1;
         case TET10:
+        case TET14:
           return 2;
         case HEX8:
           return 1;
@@ -2355,6 +2432,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case TRISHELL3:
           return 1;
         case TRI6:
+        case TRI7:
           return 7;
         case QUAD4:
         case QUADSHELL4:
@@ -2365,6 +2443,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
           return 7;
         case TET4:
         case TET10:
+        case TET14:
         case HEX8:
         case HEX20:
         case HEX27:
@@ -2389,6 +2468,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case TRI3:
         case TRISHELL3:
         case TRI6:
+        case TRI7:
         case QUAD4:
         case QUADSHELL4:
         case QUAD8:
@@ -2396,6 +2476,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case QUAD9:
         case TET4:
         case TET10:
+        case TET14:
         case HEX8:
         case HEX20:
         case HEX27:
@@ -2421,6 +2502,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case TRISHELL3:
           return 0;
         case TRI6:
+        case TRI7:
           return 3;
         case QUAD4:
         case QUADSHELL4:
@@ -2429,6 +2511,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case QUAD9:
         case TET4:
         case TET10:
+        case TET14:
         case HEX8:
         case HEX20:
         case HEX27:
@@ -2453,6 +2536,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case TRI3:
         case TRISHELL3:
         case TRI6:
+        case TRI7:
           return 0;
         case QUAD4:
         case QUADSHELL4:
@@ -2463,6 +2547,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
           return unlimited;
         case TET4:
         case TET10:
+        case TET14:
           return 0;
         case HEX8:
           return 3;
@@ -2491,6 +2576,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case TRISHELL3:
           return 1;
         case TRI6:
+        case TRI7:
           return unlimited;
         case QUAD4:
         case QUADSHELL4:
@@ -2500,46 +2586,11 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case QUAD9:
           return unlimited;
         case TET4:
+          return 1;
         case TET10:
-          return 0;
-        case HEX8:
-        case HEX20:
-          return 1;
-        case HEX27:
+          return 2;
+        case TET14:
           return unlimited;
-        case PRISM6:
-        case PRISM15:
-        case PRISM18:
-        case PYRAMID5:
-        case PYRAMID13:
-        case PYRAMID14:
-          return 0;
-        default:
-          return unknown;
-        }
-      break;
-    case L2_HIERARCHIC:
-      switch (el_t)
-        {
-        case EDGE2:
-        case EDGE3:
-        case EDGE4:
-          return unlimited;
-        case TRI3:
-        case TRISHELL3:
-          return 1;
-        case TRI6:
-          return unlimited;
-        case QUAD4:
-        case QUADSHELL4:
-          return 1;
-        case QUAD8:
-        case QUADSHELL8:
-        case QUAD9:
-          return unlimited;
-        case TET4:
-        case TET10:
-          return 0;
         case HEX8:
         case HEX20:
           return 1;
@@ -2567,6 +2618,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case TRISHELL3:
           return 0;
         case TRI6:
+        case TRI7:
           return unlimited;
         case QUAD4:
         case QUADSHELL4:
@@ -2577,6 +2629,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
           return unlimited;
         case TET4:
         case TET10:
+        case TET14:
           return 0;
         case HEX8:
         case HEX20:
@@ -2608,9 +2661,11 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
       switch (el_t)
         {
         case TRI6:
+        case TRI7:
         case QUAD8:
         case QUAD9:
         case TET10:
+        case TET14:
         case HEX20:
         case HEX27:
           return 1;

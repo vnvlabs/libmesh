@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -35,9 +35,7 @@ EulerSolver::EulerSolver (sys_type & s)
 
 
 
-EulerSolver::~EulerSolver ()
-{
-}
+EulerSolver::~EulerSolver () = default;
 
 
 
@@ -251,6 +249,7 @@ void EulerSolver::integrate_qoi_timestep()
   }
 }
 
+#ifdef LIBMESH_ENABLE_AMR
 void EulerSolver::integrate_adjoint_refinement_error_estimate(AdjointRefinementEstimator & adjoint_refinement_error_estimator, ErrorVector & QoI_elementwise_error)
 {
   // Currently, we only support this functionality when Backward-Euler time integration is used.
@@ -400,7 +399,8 @@ void EulerSolver::integrate_adjoint_refinement_error_estimate(AdjointRefinementE
 
   // Error contribution from this timestep
   for(unsigned int i = 0; i < QoI_elementwise_error.size(); i++)
-    QoI_elementwise_error[i] = ((QoI_elementwise_error_right[i] + QoI_elementwise_error_left[i])/2.)*(time_right - time_left);
+    QoI_elementwise_error[i] = float(((QoI_elementwise_error_right[i] + QoI_elementwise_error_left[i])/2)
+                                     * (time_right - time_left));
 
   // QoI set spatially integrated errors contribution from this timestep
   for (auto j : make_range(_system.n_qois()))
@@ -413,5 +413,6 @@ void EulerSolver::integrate_adjoint_refinement_error_estimate(AdjointRefinementE
   }
 
 }
+#endif // LIBMESH_ENABLE_AMR
 
 } // namespace libMesh

@@ -223,6 +223,11 @@ AS_IF([test "x$enablepetsc" = "xno" && test "x$petschyprerequired" = "xyes"],
 AS_IF([test "x$enablepetsc" != "xno"],
       [
         CONFIGURE_PETSC
+      ])
+dnl CONFIGURE_PETSC may set enablepetsc=no if the provided copy is broken -
+dnl if so then don't add these libraries
+AS_IF([test "x$enablepetsc" != "xno"],
+      [
         libmesh_optional_INCLUDES="$PETSCINCLUDEDIRS $libmesh_optional_INCLUDES"
         libmesh_optional_LIBS="$PETSCLINKLIBS $libmesh_optional_LIBS"
       ])
@@ -481,7 +486,7 @@ AS_IF([test $enablevnv = yes],
       [libmesh_contrib_INCLUDES="$VNV_INCLUDE $libmesh_contrib_INCLUDES"
        libmesh_optional_LIBS="$VNV_LIB $libmesh_optional_LIBS"])
 AM_CONDITIONAL(LIBMESH_ENABLE_VNV, test x$enablevnv = xyes)
-
+                                                                
 
 # -------------------------------------------------------------
 # Doxygen - look for doxygen (a documentation tool)
@@ -504,6 +509,18 @@ AS_IF([test "x$DOXYGEN" != x],
               ])
         AC_SUBST(HAVE_DOT)
       ])
+# -------------------------------------------------------------
+
+
+
+# -------------------------------------------------------------
+# poly2tri -- enabled by default
+# -------------------------------------------------------------
+CONFIGURE_POLY2TRI
+AS_IF([test $enablepoly2tri = yes],
+      [libmesh_contrib_INCLUDES="$POLY2TRI_INCLUDE $libmesh_contrib_INCLUDES"])
+AM_CONDITIONAL(LIBMESH_ENABLE_POLY2TRI, test x$enablepoly2tri = xyes)
+AC_CONFIG_FILES([contrib/poly2tri/modified/Makefile])
 # -------------------------------------------------------------
 
 
@@ -670,9 +687,28 @@ AM_CONDITIONAL(LIBMESH_ENABLE_CURL, test x$enablecurl = xyes)
 
 
 # --------------------------------------------------------------
-# HDF5 -- enabled by default
+# HDF5 -- disabled by default
 # --------------------------------------------------------------
+
+# PETSc configure can --download-hdf5, and that's a really convenient
+# feature for users ... but libMesh --enable-hdf5 will only detect it
+# if we add PETSc include and lib directory flags *here*; if we wait
+# until build time it's too late.
+
+ac_PETSCHDF5_save_CPPFLAGS="$CPPFLAGS"
+ac_PETSCHDF5_save_LDFLAGS="$LDFLAGS"
+
+AS_IF([test "x$enablepetsc" != "xno"],
+      [
+        CPPFLAGS="$PETSCINCLUDEDIRS $CPPFLAGS"
+        LDFLAGS="$PETSCLINKLIBS $LDFLAGS"
+      ])
+
 CONFIGURE_HDF5
+
+CPPFLAGS="$ac_PETSCHDF5_save_CPPFLAGS"
+LDFLAGS="$ac_PETSCHDF5_save_LDFLAGS"
+
 AS_IF([test $enablehdf5 = yes],
       [
         libmesh_optional_INCLUDES="$HDF5_CPPFLAGS $libmesh_optional_INCLUDES"
@@ -699,7 +735,7 @@ AM_CONDITIONAL(LIBMESH_ENABLE_NETCDF_V4, test x$netcdfversion = x4)
 
 # -------------------------------------------------------------
 # ExodusII -- enabled by default (it is distributed in contrib)
-# (note that ExodusII requires netCDF
+# (note that ExodusII requires netCDF)
 # -------------------------------------------------------------
 CONFIGURE_EXODUS
 AS_IF([test $enableexodus = yes],
@@ -708,6 +744,7 @@ AS_IF([test $enableexodus = yes],
 AM_CONDITIONAL(LIBMESH_ENABLE_EXODUS,      test x$enableexodus  = xyes)
 AM_CONDITIONAL(LIBMESH_ENABLE_EXODUS_V509, test x$exodusversion = xv5.09)
 AM_CONDITIONAL(LIBMESH_ENABLE_EXODUS_V522, test x$exodusversion = xv5.22)
+AM_CONDITIONAL(LIBMESH_ENABLE_EXODUS_V811, test x$exodusversion = xv8.11)
 
 # -------------------------------------------------------------
 # Nemesis -- enabled by default (it is distributed in contrib)
@@ -720,6 +757,7 @@ AS_IF([test $enablenemesis = yes],
 AM_CONDITIONAL(LIBMESH_ENABLE_NEMESIS,      test x$enablenemesis  = xyes)
 AM_CONDITIONAL(LIBMESH_ENABLE_NEMESIS_V309, test x$nemesisversion = xv3.09)
 AM_CONDITIONAL(LIBMESH_ENABLE_NEMESIS_V522, test x$nemesisversion = xv5.22)
+AM_CONDITIONAL(LIBMESH_ENABLE_NEMESIS_V811, test x$nemesisversion = xv8.11)
 
 
 

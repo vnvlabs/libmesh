@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -141,7 +141,7 @@ public:
     /**
      * Destructor.  Virtual because we will have virtual functions.
      */
-    virtual ~Initialization () {}
+    virtual ~Initialization () = default;
 
     /**
      * Initialization function.  This function will be called
@@ -165,7 +165,7 @@ public:
     /**
      * Destructor.  Virtual because we will have virtual functions.
      */
-    virtual ~Assembly () {}
+    virtual ~Assembly () = default;
 
     /**
      * Assembly function.  This function will be called
@@ -189,7 +189,7 @@ public:
     /**
      * Destructor.  Virtual because we will have virtual functions.
      */
-    virtual ~Constraint () {}
+    virtual ~Constraint () = default;
 
     /**
      * Constraint function.  This function will be called
@@ -213,7 +213,7 @@ public:
     /**
      * Destructor.  Virtual because we will have virtual functions.
      */
-    virtual ~QOI () {}
+    virtual ~QOI () = default;
 
     /**
      * Quantity of interest function.  This function will be called
@@ -237,7 +237,7 @@ public:
     /**
      * Destructor.  Virtual because we will have virtual functions.
      */
-    virtual ~QOIDerivative () {}
+    virtual ~QOIDerivative () = default;
 
     /**
      * Quantity of interest derivative function. This function will

@@ -944,14 +944,14 @@ void RBEvaluation::write_out_vectors(System & sys,
 {
   LOG_SCOPE("write_out_vectors()", "RBEvaluation");
 
-  if (this->processor_id() == 0)
+  if (sys.comm().rank() == 0)
     {
       // Make a directory to store all the data files
       Utility::mkdir(directory_name.c_str());
     }
 
   // Make sure processors are synced up before we begin
-  this->comm().barrier();
+  sys.comm().barrier();
 
   std::ostringstream file_name;
   const std::string basis_function_suffix = (write_binary_vectors ? ".xdr" : ".dat");
@@ -960,13 +960,18 @@ void RBEvaluation::write_out_vectors(System & sys,
   Xdr bf_data(file_name.str(),
               write_binary_vectors ? ENCODE : WRITE);
 
-  std::string version("libMesh-" + libMesh::get_io_compatibility_version());
+  // Following EquationSystems::write(), we should only write the header information
+  // if we're proc 0
+  if (sys.comm().rank() == 0)
+    {
+      std::string version("libMesh-" + libMesh::get_io_compatibility_version());
 #ifdef LIBMESH_ENABLE_INFINITE_ELEMENTS
-  version += " with infinite elements";
+      version += " with infinite elements";
 #endif
-  bf_data.data(version ,"# File Format Identifier");
+      bf_data.data(version ,"# File Format Identifier");
 
-  sys.write_header(bf_data, /*(unused arg)*/ version, /*write_additional_data=*/false);
+      sys.write_header(bf_data, /*(unused arg)*/ version, /*write_additional_data=*/false);
+    }
 
   // Following EquationSystemsIO::write, we use a temporary numbering (node major)
   // before writing out the data
@@ -1046,7 +1051,7 @@ void RBEvaluation::read_in_vectors_from_multiple_files(System & sys,
     return;
 
   // Make sure processors are synced up before we begin
-  this->comm().barrier();
+  sys.comm().barrier();
 
   std::ostringstream file_name;
   const std::string basis_function_suffix = (read_binary_vectors ? ".xdr" : ".dat");
@@ -1081,7 +1086,7 @@ void RBEvaluation::read_in_vectors_from_multiple_files(System & sys,
                 << "_data" << basis_function_suffix;
 
       // On processor zero check to be sure the file exists
-      if (this->processor_id() == 0)
+      if (sys.comm().rank() == 0)
         {
           struct stat stat_info;
           int stat_result = stat(file_name.str().c_str(), &stat_info);

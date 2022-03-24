@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -36,12 +36,14 @@ Real fe_triangle_helper (const Elem & elem,
                          const Order totalorder,
                          const unsigned int noden);
 
+template <FEFamily T>
 Real fe_hierarchic_2D_shape(const Elem * elem,
                             const Order order,
                             const unsigned int i,
                             const Point & p,
                             const bool add_p_level);
 
+template <FEFamily T>
 Real fe_hierarchic_2D_shape_deriv(const Elem * elem,
                                   const Order order,
                                   const unsigned int i,
@@ -51,6 +53,7 @@ Real fe_hierarchic_2D_shape_deriv(const Elem * elem,
 
 #ifdef LIBMESH_ENABLE_SECOND_DERIVATIVES
 
+template <FEFamily T>
 Real fe_hierarchic_2D_shape_second_deriv(const Elem * elem,
                                          const Order order,
                                          const unsigned int i,
@@ -116,7 +119,7 @@ Real FE<2,HIERARCHIC>::shape(const Elem * elem,
                              const Point & p,
                              const bool add_p_level)
 {
-  return fe_hierarchic_2D_shape(elem, order, i, p, add_p_level);
+  return fe_hierarchic_2D_shape<HIERARCHIC>(elem, order, i, p, add_p_level);
 }
 
 
@@ -128,7 +131,7 @@ Real FE<2,HIERARCHIC>::shape(const FEType fet,
                              const Point & p,
                              const bool add_p_level)
 {
-  return fe_hierarchic_2D_shape(elem, fet.order, i, p, add_p_level);
+  return fe_hierarchic_2D_shape<HIERARCHIC>(elem, fet.order, i, p, add_p_level);
 }
 
 
@@ -139,7 +142,7 @@ Real FE<2,L2_HIERARCHIC>::shape(const Elem * elem,
                                 const Point & p,
                                 const bool add_p_level)
 {
-  return fe_hierarchic_2D_shape(elem, order, i, p, add_p_level);
+  return fe_hierarchic_2D_shape<L2_HIERARCHIC>(elem, order, i, p, add_p_level);
 }
 
 
@@ -150,7 +153,7 @@ Real FE<2,L2_HIERARCHIC>::shape(const FEType fet,
                                 const Point & p,
                                 const bool add_p_level)
 {
-  return fe_hierarchic_2D_shape(elem, fet.order, i, p, add_p_level);
+  return fe_hierarchic_2D_shape<L2_HIERARCHIC>(elem, fet.order, i, p, add_p_level);
 }
 
 
@@ -172,9 +175,69 @@ Real FE<2,SIDE_HIERARCHIC>::shape(const Elem * elem,
   switch (type)
     {
     case TRI6:
+    case TRI7:
       {
-        libmesh_not_implemented();
-        return 0;
+        libmesh_assert_less(i, 3*dofs_per_side);
+
+        // Flip odd degree of freedom values if necessary
+        // to keep continuity on sides.  We'll flip xi/eta rather than
+        // flipping phi, so that we can use this to handle the "nodal"
+        // degrees of freedom too.
+        Real f = 1.;
+
+        const Real zeta1 = p(0);
+        const Real zeta2 = p(1);
+        const Real zeta0 = 1. - zeta1 - zeta2;
+
+        if (zeta1 > zeta2 && zeta0 > zeta2) // side 0
+          {
+            if (i >= dofs_per_side)
+              return 0;
+
+            if (totalorder == 0) // special case since raw HIERARCHIC lacks CONSTANTs
+              return 1;
+
+            if ((i < 2 || i % 2) &&
+                elem->point(0) > elem->point(1))
+              f = -1;
+
+            return FE<1,HIERARCHIC>::shape(EDGE3, totalorder, i, f*(zeta1-zeta0));
+          }
+        else if (zeta1 > zeta0 && zeta2 > zeta0) // side 1
+          {
+            if (i < dofs_per_side ||
+                i >= 2*dofs_per_side)
+              return 0;
+
+            if (totalorder == 0) // special case since raw HIERARCHIC lacks CONSTANTs
+              return 1;
+
+            const unsigned int side_i = i - dofs_per_side;
+
+            if ((side_i < 2 || side_i % 2) &&
+                elem->point(1) > elem->point(2))
+              f = -1;
+
+            return FE<1,HIERARCHIC>::shape(EDGE3, totalorder, side_i, f*(zeta2-zeta1));
+          }
+        else // side 2
+          {
+            libmesh_assert (zeta2 >= zeta1 && zeta0 >= zeta1); // On a corner???
+
+            if (i < 2*dofs_per_side)
+              return 0;
+
+            if (totalorder == 0) // special case since raw HIERARCHIC lacks CONSTANTs
+              return 1;
+
+            const unsigned int side_i = i - 2*dofs_per_side;
+
+            if ((side_i < 2 || side_i % 2) &&
+                elem->point(2) > elem->point(0))
+              f = -1;
+
+            return FE<1,HIERARCHIC>::shape(EDGE3, totalorder, side_i, f*(zeta0-zeta2));
+          }
       }
     case QUAD8:
     case QUADSHELL8:
@@ -325,7 +388,7 @@ Real FE<2,HIERARCHIC>::shape_deriv(const Elem * elem,
                                    const Point & p,
                                    const bool add_p_level)
 {
-  return fe_hierarchic_2D_shape_deriv(elem, order, i, j, p, add_p_level);
+  return fe_hierarchic_2D_shape_deriv<HIERARCHIC>(elem, order, i, j, p, add_p_level);
 }
 
 
@@ -337,7 +400,7 @@ Real FE<2,HIERARCHIC>::shape_deriv(const FEType fet,
                                    const Point & p,
                                    const bool add_p_level)
 {
-  return fe_hierarchic_2D_shape_deriv(elem, fet.order, i, j, p, add_p_level);
+  return fe_hierarchic_2D_shape_deriv<HIERARCHIC>(elem, fet.order, i, j, p, add_p_level);
 }
 
 
@@ -351,7 +414,7 @@ Real FE<2,L2_HIERARCHIC>::shape_deriv(const Elem * elem,
                                       const Point & p,
                                       const bool add_p_level)
 {
-  return fe_hierarchic_2D_shape_deriv(elem, order, i, j, p, add_p_level);
+  return fe_hierarchic_2D_shape_deriv<L2_HIERARCHIC>(elem, order, i, j, p, add_p_level);
 }
 
 
@@ -363,7 +426,7 @@ Real FE<2,L2_HIERARCHIC>::shape_deriv(const FEType fet,
                                       const Point & p,
                                       const bool add_p_level)
 {
-  return fe_hierarchic_2D_shape_deriv(elem, fet.order, i, j, p, add_p_level);
+  return fe_hierarchic_2D_shape_deriv<L2_HIERARCHIC>(elem, fet.order, i, j, p, add_p_level);
 }
 
 
@@ -391,10 +454,86 @@ Real FE<2,SIDE_HIERARCHIC>::shape_deriv(const Elem * elem,
   switch (type)
     {
     case TRI6:
+    case TRI7:
       {
-        libmesh_not_implemented();
-        return 0;
+        return fe_fdm_deriv(elem, order, i, j, p, add_p_level, FE<2,SIDE_HIERARCHIC>::shape);
       }
+#if 0
+      {
+        libmesh_assert_less(i, 3*dofs_per_side);
+        libmesh_assert_less (j, 2);
+
+        // Flip odd degree of freedom values if necessary
+        // to keep continuity on sides.  We'll flip xi/eta rather than
+        // flipping phi, so that we can use this to handle the "nodal"
+        // degrees of freedom too.
+        Real f = 1.;
+
+        const Real zeta1 = p(0);
+        const Real zeta2 = p(1);
+        const Real zeta0 = 1. - zeta1 - zeta2;
+
+        if (zeta1 > zeta2 && zeta0 > zeta2) // side 0
+          {
+            if (j == 1) // d/deta is perpendicular here
+              return 0;
+
+            if (i >= dofs_per_side)
+              return 0;
+
+            if (totalorder == 0) // special case since raw HIERARCHIC lacks CONSTANTs
+              return 0;
+
+            if ((i < 2 || i % 2) &&
+                elem->point(0) > elem->point(1))
+              f = -1;
+
+            return f*FE<1,HIERARCHIC>::shape_deriv(EDGE3, totalorder, i, 0, f*(zeta1-zeta0));
+          }
+        else if (zeta1 > zeta0 && zeta2 > zeta0) // side 1
+          {
+            if (i < dofs_per_side ||
+                i >= 2*dofs_per_side)
+              return 0;
+
+            if (totalorder == 0) // special case since raw HIERARCHIC lacks CONSTANTs
+              return 0;
+
+            const unsigned int side_i = i - dofs_per_side;
+
+            if ((side_i < 2 || side_i % 2) &&
+                elem->point(1) > elem->point(2))
+              f = -1;
+
+            Real g = 1;
+            if (j == 0) // 2D d/dxi is in the opposite direction on this edge
+              g = -1;
+
+            return f*g*FE<1,HIERARCHIC>::shape_deriv(EDGE3, totalorder, side_i, 0, f*(zeta2-zeta1));
+          }
+        else // side 2
+          {
+            libmesh_assert (zeta2 >= zeta1 && zeta0 >= zeta1); // On a corner???
+
+            if (j == 0) // d/dxi is perpendicular here
+              return 0;
+
+            if (i < 2*dofs_per_side)
+              return 0;
+
+            if (totalorder == 0) // special case since raw HIERARCHIC lacks CONSTANTs
+              return 0;
+
+            const unsigned int side_i = i - 2*dofs_per_side;
+
+            if ((side_i < 2 || side_i % 2) &&
+                elem->point(2) > elem->point(0))
+              f = -1;
+
+            return -f*FE<1,HIERARCHIC>::shape_deriv(EDGE3, totalorder, side_i, 0, f*(zeta0-zeta2));
+          }
+      }
+#endif
     case QUAD8:
     case QUADSHELL8:
     case QUAD9:
@@ -542,7 +681,7 @@ Real FE<2,HIERARCHIC>::shape_second_deriv(const Elem * elem,
                                           const Point & p,
                                           const bool add_p_level)
 {
-  return fe_hierarchic_2D_shape_second_deriv(elem, order, i, j, p, add_p_level);
+  return fe_hierarchic_2D_shape_second_deriv<HIERARCHIC>(elem, order, i, j, p, add_p_level);
 }
 
 
@@ -554,7 +693,7 @@ Real FE<2,HIERARCHIC>::shape_second_deriv(const FEType fet,
                                           const Point & p,
                                           const bool add_p_level)
 {
-  return fe_hierarchic_2D_shape_second_deriv(elem, fet.order, i, j, p, add_p_level);
+  return fe_hierarchic_2D_shape_second_deriv<HIERARCHIC>(elem, fet.order, i, j, p, add_p_level);
 }
 
 
@@ -566,7 +705,7 @@ Real FE<2,L2_HIERARCHIC>::shape_second_deriv(const Elem * elem,
                                              const Point & p,
                                              const bool add_p_level)
 {
-  return fe_hierarchic_2D_shape_second_deriv(elem, order, i, j, p, add_p_level);
+  return fe_hierarchic_2D_shape_second_deriv<L2_HIERARCHIC>(elem, order, i, j, p, add_p_level);
 }
 
 
@@ -578,7 +717,7 @@ Real FE<2,L2_HIERARCHIC>::shape_second_deriv(const FEType fet,
                                              const Point & p,
                                              const bool add_p_level)
 {
-  return fe_hierarchic_2D_shape_second_deriv(elem, fet.order, i, j, p, add_p_level);
+  return fe_hierarchic_2D_shape_second_deriv<L2_HIERARCHIC>(elem, fet.order, i, j, p, add_p_level);
 }
 
 
@@ -604,9 +743,10 @@ Real FE<2,SIDE_HIERARCHIC>::shape_second_deriv(const Elem * elem,
   switch (type)
     {
     case TRI6:
+    case TRI7:
       {
-        libmesh_not_implemented();
-        return 0;
+        return fe_fdm_second_deriv(elem, order, i, j, p, add_p_level,
+                                   FE<2,SIDE_HIERARCHIC>::shape_deriv);
       }
     case QUAD8:
     case QUADSHELL8:
@@ -727,7 +867,10 @@ Real fe_triangle_helper (const Elem & elem,
   if (basisorder%2 && (elem.point(noden) > elem.point((noden+1)%3)))
     flip = -1.;
 
-  // Avoid NaN around vertices!
+  // Avoid NaN around vertices ... but we still have to match the true
+  // function, even when we're *outside* the triangle (crossval==0 on
+  // a line, not just at a point!), to handle imprecise queries and
+  // FDM derivatives correctly!
   if (crossval == 0.)
     {
       unsigned int basisfactorial = 1.;
@@ -736,7 +879,8 @@ Real fe_triangle_helper (const Elem & elem,
 
       return std::pow(edgenumerator, basisorder) / basisfactorial;
     }
-  // FIXME - what happens with roundoff when 0 < crossval < O(epsilon)?
+  // Experimentally, as c -> 0, n propto c, I'm still seeing good
+  // behavior from the default implementation below:
 
   const Real edgeval = edgenumerator / crossval;
   const Real crossfunc = std::pow(crossval, basisorder);
@@ -746,6 +890,7 @@ Real fe_triangle_helper (const Elem & elem,
                             basisorder, edgeval);
 }
 
+template <FEFamily T>
 Real fe_hierarchic_2D_shape(const Elem * elem,
                             const Order order,
                             const unsigned int i,
@@ -763,13 +908,15 @@ Real fe_hierarchic_2D_shape(const Elem * elem,
     case TRI3:
     case TRISHELL3:
     case TRI6:
+    case TRI7:
       {
         const Real zeta1 = p(0);
         const Real zeta2 = p(1);
         const Real zeta0 = 1. - zeta1 - zeta2;
 
         libmesh_assert_less (i, (totalorder+1u)*(totalorder+2u)/2);
-        libmesh_assert (elem->type() == TRI6 || totalorder < 2);
+        libmesh_assert (T == L2_HIERARCHIC || elem->type() == TRI6 ||
+                        elem->type() == TRI7 || totalorder < 2);
 
         // Vertex DoFs
         if (i == 0)
@@ -830,7 +977,7 @@ Real fe_hierarchic_2D_shape(const Elem * elem,
       // Hierarchic shape functions on the quadrilateral.
     case QUAD4:
     case QUADSHELL4:
-      libmesh_assert_less (totalorder, 2);
+      libmesh_assert (T == L2_HIERARCHIC || totalorder < 2);
       libmesh_fallthrough();
     case QUAD8:
     case QUADSHELL8:
@@ -888,8 +1035,8 @@ Real fe_hierarchic_2D_shape(const Elem * elem,
         else if ((i0 == 1) && (i1%2) && (i1>2))
           f = (elem->point(1) > elem->point(2))?-1.:1.;
 
-        return f*(FE<1,HIERARCHIC>::shape(EDGE3, totalorder, i0, xi)*
-                  FE<1,HIERARCHIC>::shape(EDGE3, totalorder, i1, eta));
+        return f*(FE<1,T>::shape(EDGE3, totalorder, i0, xi)*
+                  FE<1,T>::shape(EDGE3, totalorder, i1, eta));
       }
 
     default:
@@ -900,7 +1047,7 @@ Real fe_hierarchic_2D_shape(const Elem * elem,
 }
 
 
-
+template <FEFamily T>
 Real fe_hierarchic_2D_shape_deriv(const Elem * elem,
                                   const Order order,
                                   const unsigned int i,
@@ -923,41 +1070,14 @@ Real fe_hierarchic_2D_shape_deriv(const Elem * elem,
     case TRI3:
     case TRISHELL3:
     case TRI6:
+    case TRI7:
       {
-        const Real eps = 1.e-6;
-
-        libmesh_assert_less (j, 2);
-
-        switch (j)
-          {
-            //  d()/dxi
-          case 0:
-            {
-              const Point pp(p(0)+eps, p(1));
-              const Point pm(p(0)-eps, p(1));
-
-              return (FE<2,HIERARCHIC>::shape(elem, order, i, pp) -
-                      FE<2,HIERARCHIC>::shape(elem, order, i, pm))/2./eps;
-            }
-
-            // d()/deta
-          case 1:
-            {
-              const Point pp(p(0), p(1)+eps);
-              const Point pm(p(0), p(1)-eps);
-
-              return (FE<2,HIERARCHIC>::shape(elem, order, i, pp) -
-                      FE<2,HIERARCHIC>::shape(elem, order, i, pm))/2./eps;
-            }
-
-          default:
-            libmesh_error_msg("Invalid derivative index j = " << j);
-          }
+        return fe_fdm_deriv(elem, order, i, j, p, add_p_level, FE<2,T>::shape);
       }
 
     case QUAD4:
     case QUADSHELL4:
-      libmesh_assert_less (totalorder, 2);
+      libmesh_assert (T == L2_HIERARCHIC || totalorder < 2);
       libmesh_fallthrough();
     case QUAD8:
     case QUADSHELL8:
@@ -1019,13 +1139,13 @@ Real fe_hierarchic_2D_shape_deriv(const Elem * elem,
           {
             // d()/dxi
           case 0:
-            return f*(FE<1,HIERARCHIC>::shape_deriv(EDGE3, totalorder, i0, 0, xi)*
-                      FE<1,HIERARCHIC>::shape      (EDGE3, totalorder, i1,    eta));
+            return f*(FE<1,T>::shape_deriv(EDGE3, totalorder, i0, 0, xi)*
+                      FE<1,T>::shape      (EDGE3, totalorder, i1,    eta));
 
             // d()/deta
           case 1:
-            return f*(FE<1,HIERARCHIC>::shape      (EDGE3, totalorder, i0,    xi)*
-                      FE<1,HIERARCHIC>::shape_deriv(EDGE3, totalorder, i1, 0, eta));
+            return f*(FE<1,T>::shape      (EDGE3, totalorder, i0,    xi)*
+                      FE<1,T>::shape_deriv(EDGE3, totalorder, i1, 0, eta));
 
           default:
             libmesh_error_msg("Invalid derivative index j = " << j);
@@ -1043,6 +1163,7 @@ Real fe_hierarchic_2D_shape_deriv(const Elem * elem,
 
 #ifdef LIBMESH_ENABLE_SECOND_DERIVATIVES
 
+template <FEFamily T>
 Real fe_hierarchic_2D_shape_second_deriv(const Elem * elem,
                                          const Order order,
                                          const unsigned int i,
@@ -1050,49 +1171,8 @@ Real fe_hierarchic_2D_shape_second_deriv(const Elem * elem,
                                          const Point & p,
                                          const bool add_p_level)
 {
-  libmesh_assert(elem);
-
-  // I have been lazy here and am using finite differences
-  // to compute the derivatives!
-  const Real eps = 1.e-6;
-  Point pp, pm;
-  unsigned int prevj = libMesh::invalid_uint;
-
-  switch (j)
-    {
-      //  d^2()/dxi^2
-    case 0:
-      {
-        pp = Point(p(0)+eps, p(1));
-        pm = Point(p(0)-eps, p(1));
-        prevj = 0;
-        break;
-      }
-
-      // d^2()/dxideta
-    case 1:
-      {
-        pp = Point(p(0), p(1)+eps);
-        pm = Point(p(0), p(1)-eps);
-        prevj = 0;
-        break;
-      }
-
-      // d^2()/deta^2
-    case 2:
-      {
-        pp = Point(p(0), p(1)+eps);
-        pm = Point(p(0), p(1)-eps);
-        prevj = 1;
-        break;
-      }
-    default:
-      libmesh_error_msg("Invalid derivative index j = " << j);
-    }
-
-  return (FE<2,HIERARCHIC>::shape_deriv(elem, order, i, prevj, pp, add_p_level) -
-          FE<2,HIERARCHIC>::shape_deriv(elem, order, i, prevj, pm, add_p_level)
-          )/2./eps;
+  return fe_fdm_second_deriv(elem, order, i, j, p, add_p_level,
+                             FE<2,T>::shape_deriv);
 }
 
 #endif // LIBMESH_ENABLE_SECOND_DERIVATIVES

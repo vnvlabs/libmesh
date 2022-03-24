@@ -19,7 +19,7 @@ class MeshGenerationTest : public CppUnit::TestCase
    * MeshBase functions they rely on.
    */
 public:
-  CPPUNIT_TEST_SUITE( MeshGenerationTest );
+  LIBMESH_CPPUNIT_TEST_SUITE( MeshGenerationTest );
 
   CPPUNIT_TEST( buildLineEdge2 );
   CPPUNIT_TEST( buildLineEdge3 );
@@ -33,6 +33,7 @@ public:
 #if LIBMESH_DIM > 1
   CPPUNIT_TEST( buildSquareTri3 );
   CPPUNIT_TEST( buildSquareTri6 );
+  CPPUNIT_TEST( buildSquareTri7 );
   CPPUNIT_TEST( buildSquareQuad4 );
   CPPUNIT_TEST( buildSquareQuad8 );
   CPPUNIT_TEST( buildSquareQuad9 );
@@ -44,6 +45,7 @@ public:
 #if LIBMESH_DIM > 2
   CPPUNIT_TEST( buildCubeTet4 );
   CPPUNIT_TEST( buildCubeTet10 );
+  CPPUNIT_TEST( buildCubeTet14 );
   CPPUNIT_TEST( buildCubeHex8 );
   CPPUNIT_TEST( buildCubeHex20 );
   CPPUNIT_TEST( buildCubeHex27 );
@@ -93,6 +95,11 @@ public:
     BoundingBox bbox = MeshTools::create_bounding_box(mesh);
     CPPUNIT_ASSERT_EQUAL(bbox.min()(0), Real(-1.0));
     CPPUNIT_ASSERT_EQUAL(bbox.max()(0), Real(2.0));
+
+    // Do serial assertions *after* all parallel assertions, so we
+    // stay in sync after failure on only some processor(s)
+    for (auto & elem : mesh.element_ptr_range())
+      CPPUNIT_ASSERT(elem->has_affine_map());
   }
 
   void testBuildSquare(UnstructuredMesh & mesh, unsigned int n, ElemType type)
@@ -103,23 +110,28 @@ public:
     else
       CPPUNIT_ASSERT_EQUAL(mesh.n_elem(), cast_int<dof_id_type>(n*n*2));
 
-    const unsigned int n_nodes = Elem::type_to_n_nodes_map[type];
-
-    switch (n_nodes)
+    switch (type)
       {
-      case 3: // First-order elements
-      case 4:
+      case TRI3: // First-order elements
+      case QUAD4:
         CPPUNIT_ASSERT_EQUAL(mesh.n_nodes(),
                              cast_int<dof_id_type>((n+1)*(n+1)));
         break;
-      case 6: // Second-order elements
-      case 9:
+      case TRI6: // Second-order elements
+      case QUAD9:
         CPPUNIT_ASSERT_EQUAL(mesh.n_nodes(),
                              cast_int<dof_id_type>((2*n+1)*(2*n+1)));
         break;
-      default: // QUAD8
+      case QUAD8: // Not-really-second-order element missing center nodes
         CPPUNIT_ASSERT_EQUAL(mesh.n_nodes(),
                              cast_int<dof_id_type>((2*n+1)*(2*n+1) - n*n));
+        break;
+      case TRI7: // Not-really-second-order element with extra center nodes
+        CPPUNIT_ASSERT_EQUAL(mesh.n_nodes(),
+                             cast_int<dof_id_type>((2*n+1)*(2*n+1) + 2*n*n));
+        break;
+      default: // Wait, what did we try to build?
+        CPPUNIT_ASSERT(false);
       }
 
     // Our bounding boxes can be loose on higher order elements, but
@@ -129,6 +141,11 @@ public:
     CPPUNIT_ASSERT(bbox.max()(0) >= Real(3.0));
     CPPUNIT_ASSERT(bbox.min()(1) <= Real(-4.0));
     CPPUNIT_ASSERT(bbox.max()(1) >= Real(5.0));
+
+    // Do serial assertions *after* all parallel assertions, so we
+    // stay in sync after failure on only some processor(s)
+    for (auto & elem : mesh.element_ptr_range())
+      CPPUNIT_ASSERT(elem->has_affine_map());
   }
 
   void testBuildCube(UnstructuredMesh & mesh, unsigned int n, ElemType type)
@@ -189,9 +206,14 @@ public:
         CPPUNIT_ASSERT_EQUAL(mesh.n_nodes(),
                              cast_int<dof_id_type>((2*n+1)*(2*n+1)*(2*n+1) + 8*n*n*n - 3*(n+1)*n*n));
         break;
-      case 14:
+      case 14: // pyramids, tets
+        if (type == PYRAMID14)
+          CPPUNIT_ASSERT_EQUAL(mesh.n_nodes(),
+                               cast_int<dof_id_type>((2*n+1)*(2*n+1)*(2*n+1) + 8*n*n*n));
+        else // TET14
         CPPUNIT_ASSERT_EQUAL(mesh.n_nodes(),
-                             cast_int<dof_id_type>((2*n+1)*(2*n+1)*(2*n+1) + 8*n*n*n));
+                             cast_int<dof_id_type>((2*n+1)*(2*n+1)*(2*n+1) + 14*n*n*n + 4*3*(n+1)*n*n +
+                                                   36*n*n*n + 4*3*(n+1)*n*n));
         break;
       default:
         libmesh_error();
@@ -206,6 +228,17 @@ public:
     CPPUNIT_ASSERT(bbox.max()(1) >= Real(5.0));
     CPPUNIT_ASSERT(bbox.min()(2) <= Real(-6.0));
     CPPUNIT_ASSERT(bbox.max()(2) >= Real(7.0));
+
+    // We don't yet try to do affine map optimizations on pyramids
+    if (type == PYRAMID5 ||
+        type == PYRAMID13 ||
+        type == PYRAMID14)
+      return;
+
+    // Do serial assertions *after* all parallel assertions, so we
+    // stay in sync after failure on only some processor(s)
+    for (auto & elem : mesh.element_ptr_range())
+      CPPUNIT_ASSERT(elem->has_affine_map());
   }
 
   void testBuildSphere(unsigned int n_ref, ElemType type)
@@ -235,42 +268,44 @@ public:
       }
   }
 
-  void buildLineEdge2 ()     { tester(&MeshGenerationTest::testBuildLine, 5, EDGE2); }
-  void buildLineEdge3 ()     { tester(&MeshGenerationTest::testBuildLine, 5, EDGE3); }
-  void buildLineEdge4 ()     { tester(&MeshGenerationTest::testBuildLine, 5, EDGE4); }
+  void buildLineEdge2 ()     { LOG_UNIT_TEST; tester(&MeshGenerationTest::testBuildLine, 5, EDGE2); }
+  void buildLineEdge3 ()     { LOG_UNIT_TEST; tester(&MeshGenerationTest::testBuildLine, 5, EDGE3); }
+  void buildLineEdge4 ()     { LOG_UNIT_TEST; tester(&MeshGenerationTest::testBuildLine, 5, EDGE4); }
 
-  void buildSphereEdge2 ()     { testBuildSphere(2, EDGE2); }
-  void buildSphereEdge3 ()     { testBuildSphere(2, EDGE3); }
-  void buildSphereEdge4 ()     { testBuildSphere(2, EDGE4); }
+  void buildSphereEdge2 ()     { LOG_UNIT_TEST; testBuildSphere(2, EDGE2); }
+  void buildSphereEdge3 ()     { LOG_UNIT_TEST; testBuildSphere(2, EDGE3); }
+  void buildSphereEdge4 ()     { LOG_UNIT_TEST; testBuildSphere(2, EDGE4); }
 
-  void buildSquareTri3 ()    { tester(&MeshGenerationTest::testBuildSquare, 3, TRI3); }
-  void buildSquareTri6 ()    { tester(&MeshGenerationTest::testBuildSquare, 4, TRI6); }
-  void buildSquareQuad4 ()   { tester(&MeshGenerationTest::testBuildSquare, 4, QUAD4); }
-  void buildSquareQuad8 ()   { tester(&MeshGenerationTest::testBuildSquare, 4, QUAD8); }
-  void buildSquareQuad9 ()   { tester(&MeshGenerationTest::testBuildSquare, 4, QUAD9); }
+  void buildSquareTri3 ()    { LOG_UNIT_TEST; tester(&MeshGenerationTest::testBuildSquare, 3, TRI3); }
+  void buildSquareTri6 ()    { LOG_UNIT_TEST; tester(&MeshGenerationTest::testBuildSquare, 4, TRI6); }
+  void buildSquareTri7 ()    { LOG_UNIT_TEST; tester(&MeshGenerationTest::testBuildSquare, 4, TRI7); }
+  void buildSquareQuad4 ()   { LOG_UNIT_TEST; tester(&MeshGenerationTest::testBuildSquare, 4, QUAD4); }
+  void buildSquareQuad8 ()   { LOG_UNIT_TEST; tester(&MeshGenerationTest::testBuildSquare, 4, QUAD8); }
+  void buildSquareQuad9 ()   { LOG_UNIT_TEST; tester(&MeshGenerationTest::testBuildSquare, 4, QUAD9); }
 
-  void buildSphereTri3 ()     { testBuildSphere(2, TRI3); }
-  void buildSphereQuad4 ()     { testBuildSphere(2, QUAD4); }
+  void buildSphereTri3 ()     { LOG_UNIT_TEST; testBuildSphere(2, TRI3); }
+  void buildSphereQuad4 ()     { LOG_UNIT_TEST; testBuildSphere(2, QUAD4); }
 
-  void buildCubeTet4 ()      { tester(&MeshGenerationTest::testBuildCube, 2, TET4); }
-  void buildCubeTet10 ()     { tester(&MeshGenerationTest::testBuildCube, 2, TET10); }
-  void buildCubeHex8 ()      { tester(&MeshGenerationTest::testBuildCube, 2, HEX8); }
-  void buildCubeHex20 ()     { tester(&MeshGenerationTest::testBuildCube, 2, HEX20); }
-  void buildCubeHex27 ()     { tester(&MeshGenerationTest::testBuildCube, 2, HEX27); }
-  void buildCubePrism6 ()    { tester(&MeshGenerationTest::testBuildCube, 2, PRISM6); }
-  void buildCubePrism15 ()   { tester(&MeshGenerationTest::testBuildCube, 2, PRISM15); }
-  void buildCubePrism18 ()   { tester(&MeshGenerationTest::testBuildCube, 2, PRISM18); }
+  void buildCubeTet4 ()      { LOG_UNIT_TEST; tester(&MeshGenerationTest::testBuildCube, 2, TET4); }
+  void buildCubeTet10 ()     { LOG_UNIT_TEST; tester(&MeshGenerationTest::testBuildCube, 2, TET10); }
+  void buildCubeTet14 ()     { LOG_UNIT_TEST; tester(&MeshGenerationTest::testBuildCube, 2, TET14); }
+  void buildCubeHex8 ()      { LOG_UNIT_TEST; tester(&MeshGenerationTest::testBuildCube, 2, HEX8); }
+  void buildCubeHex20 ()     { LOG_UNIT_TEST; tester(&MeshGenerationTest::testBuildCube, 2, HEX20); }
+  void buildCubeHex27 ()     { LOG_UNIT_TEST; tester(&MeshGenerationTest::testBuildCube, 2, HEX27); }
+  void buildCubePrism6 ()    { LOG_UNIT_TEST; tester(&MeshGenerationTest::testBuildCube, 2, PRISM6); }
+  void buildCubePrism15 ()   { LOG_UNIT_TEST; tester(&MeshGenerationTest::testBuildCube, 2, PRISM15); }
+  void buildCubePrism18 ()   { LOG_UNIT_TEST; tester(&MeshGenerationTest::testBuildCube, 2, PRISM18); }
 
   // These tests throw an exception from contains_point() calls, and
   // this simply aborts() when exceptions are not enabled.
 #ifdef LIBMESH_ENABLE_EXCEPTIONS
-  void buildCubePyramid5 ()  { tester(&MeshGenerationTest::testBuildCube, 2, PYRAMID5); }
-  void buildCubePyramid13 () { tester(&MeshGenerationTest::testBuildCube, 2, PYRAMID13); }
-  void buildCubePyramid14 () { tester(&MeshGenerationTest::testBuildCube, 2, PYRAMID14); }
+  void buildCubePyramid5 ()  { LOG_UNIT_TEST; tester(&MeshGenerationTest::testBuildCube, 2, PYRAMID5); }
+  void buildCubePyramid13 () { LOG_UNIT_TEST; tester(&MeshGenerationTest::testBuildCube, 2, PYRAMID13); }
+  void buildCubePyramid14 () { LOG_UNIT_TEST; tester(&MeshGenerationTest::testBuildCube, 2, PYRAMID14); }
 #endif
 
-  void buildSphereHex8 ()     { testBuildSphere(2, HEX8); }
-  void buildSphereHex27 ()     { testBuildSphere(2, HEX27); }
+  void buildSphereHex8 ()     { LOG_UNIT_TEST; testBuildSphere(2, HEX8); }
+  void buildSphereHex27 ()     { LOG_UNIT_TEST; testBuildSphere(2, HEX27); }
 };
 
 

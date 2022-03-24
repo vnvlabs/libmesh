@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -108,6 +108,11 @@ public:
    * Clear all internal data.
    */
   virtual void clear() override;
+
+  /**
+   * Clear internal Elem data.
+   */
+  virtual void clear_elems() override;
 
   /**
    * Remove nullptr elements from arrays
@@ -460,6 +465,18 @@ public:
   evaluable_elements_end (const DofMap & dof_map,
                           unsigned int var_num = libMesh::invalid_uint) const override;
 
+  virtual element_iterator
+  multi_evaluable_elements_begin (std::vector<const DofMap *> dof_maps) override;
+
+  virtual element_iterator
+  multi_evaluable_elements_end (std::vector<const DofMap *> dof_maps) override;
+
+  virtual const_element_iterator
+  multi_evaluable_elements_begin (std::vector<const DofMap *> dof_maps) const override;
+
+  virtual const_element_iterator
+  multi_evaluable_elements_end (std::vector<const DofMap *> dof_maps) const override;
+
 #ifdef LIBMESH_ENABLE_AMR
   virtual element_iterator flagged_elements_begin (unsigned char rflag) override;
   virtual element_iterator flagged_elements_end (unsigned char rflag) override;
@@ -526,6 +543,14 @@ public:
   evaluable_nodes_end (const DofMap & dof_map,
                        unsigned int var_num = libMesh::invalid_uint) const override;
 
+  virtual node_iterator
+  multi_evaluable_nodes_begin (std::vector<const DofMap *> dof_maps) override;
+  virtual node_iterator
+  multi_evaluable_nodes_end (std::vector<const DofMap *> dof_maps) override;
+  virtual const_node_iterator
+  multi_evaluable_nodes_begin (std::vector<const DofMap *> dof_maps) const override;
+  virtual const_node_iterator
+  multi_evaluable_nodes_end (std::vector<const DofMap *> dof_maps) const override;
 
 protected:
 

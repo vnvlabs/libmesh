@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -237,14 +237,14 @@ std::unique_ptr<SparseMatrix<T>> EpetraMatrix<T>::clone () const
 
 
 template <typename T>
-void EpetraMatrix<T>::clear ()
+void EpetraMatrix<T>::clear () noexcept
 {
-  //  delete _mat;
-  //  delete _map;
+  // FIXME: clear() doesn't actually free the memory managed by this
+  // class, so it probably leaks memory.
+  // delete _mat;
+  // delete _map;
 
   this->_is_initialized = false;
-
-  libmesh_assert (!this->initialized());
 }
 
 
@@ -552,7 +552,7 @@ void EpetraMatrix<T>::print_personal(std::ostream & os) const
 
 //------------------------------------------------------------------
 // Explicit instantiations
-template class EpetraMatrix<Number>;
+template class LIBMESH_EXPORT EpetraMatrix<Number>;
 
 } // namespace libMesh
 

@@ -70,6 +70,12 @@
 /* workaround for potentially missing hash<string> */
 #undef DEFINE_HASH_STRING
 
+/* Exodus's major version number, as detected by exodus.m4 */
+#undef DETECTED_EXODUS_VERSION_MAJOR
+
+/* Exodus's minor version number, as detected by exodus.m4 */
+#undef DETECTED_EXODUS_VERSION_MINOR
+
 /* PETSc's major version number, as detected by petsc.m4 */
 #undef DETECTED_PETSC_VERSION_MAJOR
 
@@ -402,6 +408,9 @@
 /* Flag indicating if the library should be built with calls to getpwuid() */
 #undef HAVE_GETPWUID
 
+/* Define to 1 if you have the `gettimeofday' function. */
+#undef HAVE_GETTIMEOFDAY
+
 /* define if the compiler supports glibc backtrace */
 #undef HAVE_GLIBC_BACKTRACE
 
@@ -447,6 +456,9 @@
 /* "The make directory command" */
 #undef HAVE_MKDIR
 
+/* Define to 1 if you have the `mkstemp' function. */
+#undef HAVE_MKSTEMP
+
 /* Flag indicating whether or not MPI is available */
 #undef HAVE_MPI
 
@@ -483,6 +495,13 @@
 /* Flag indicating whether or not the Toolkit for Advanced Optimization (TAO)
    is available via PETSc */
 #undef HAVE_PETSC_TAO
+
+/* Flag indicating whether the library will be compiled with poly2tri support
+   */
+#undef HAVE_POLY2TRI
+
+/* Define to 1 if you have the <process.h> header file. */
+#undef HAVE_PROCESS_H
 
 /* Define if you have POSIX threads libraries and header files. */
 #undef HAVE_PTHREAD
@@ -546,6 +565,9 @@
 
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #undef HAVE_SYS_STAT_H
+
+/* Define to 1 if you have the <sys/time.h> header file. */
+#undef HAVE_SYS_TIME_H
 
 /* Define to 1 if you have the <sys/types.h> header file. */
 #undef HAVE_SYS_TYPES_H
@@ -625,6 +647,9 @@
 
 /* libMesh major version number */
 #undef MAJOR_VERSION
+
+/* size of mapvector chunks */
+#undef MAPVECTOR_CHUNK_SIZE
 
 /* libMesh micro version number */
 #undef MICRO_VERSION

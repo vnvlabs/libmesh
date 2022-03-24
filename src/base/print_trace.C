@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -46,13 +46,23 @@
 #include "libmesh/print_trace.h"
 #include "libmesh/libmesh.h"
 
-#include <unistd.h>  // needed for getpid()
+#ifdef LIBMESH_HAVE_UNISTD_H
+#include <unistd.h>  // needed for getpid() on Unix
+#endif
+#ifdef LIBMESH_HAVE_PROCESS_H
+#include <process.h> // for getpid() on Windows
+
+typedef int pid_t;
+#endif
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <cstdio> // std::remove
 #include <cstdlib> // std::system
 #include <sys/types.h> // pid_t
+#ifndef LIBMESH_HAVE_MKSTEMP
+#include "win_mkstemp.h"
+#endif
 
 #if defined(LIBMESH_HAVE_GLIBC_BACKTRACE)
 #include <execinfo.h>

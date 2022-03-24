@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -427,16 +427,15 @@ TaoOptimizationSolver<T>::~TaoOptimizationSolver ()
 
 
 template <typename T>
-void TaoOptimizationSolver<T>::clear ()
+void TaoOptimizationSolver<T>::clear () noexcept
 {
   if (this->initialized())
     {
       this->_is_initialized = false;
 
-      PetscErrorCode ierr=0;
-
-      ierr = TaoDestroy(&_tao);
-      LIBMESH_CHKERR(ierr);
+      PetscErrorCode ierr = TaoDestroy(&_tao);
+      if (ierr)
+        libmesh_warning("Warning: TaoDestroy returned a non-zero error code which we ignored.");
     }
 }
 
@@ -654,7 +653,7 @@ int TaoOptimizationSolver<T>::get_converged_reason()
 
 //------------------------------------------------------------------
 // Explicit instantiations
-template class TaoOptimizationSolver<Number>;
+template class LIBMESH_EXPORT TaoOptimizationSolver<Number>;
 
 } // namespace libMesh
 

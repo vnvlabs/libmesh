@@ -1,4 +1,4 @@
-# Do not edit - automatically generated from rebuild_include_HEADERS.sh
+# Do not edit - automatically generated from ./rebuild_include_HEADERS.sh
 # These are headers we need to compile the libMesh library but should
 # not be installed.  These header files may have implementation
 # details which are not required for the public interface
@@ -61,6 +61,7 @@ include_HEADERS =  \
         enums/enum_norm_type.h \
         enums/enum_order.h \
         enums/enum_parallel_type.h \
+        enums/enum_partitioner_type.h \
         enums/enum_point_locator_type.h \
         enums/enum_preconditioner_type.h \
         enums/enum_quadrature_type.h \
@@ -127,6 +128,7 @@ include_HEADERS =  \
         geom/cell_pyramid5.h \
         geom/cell_tet.h \
         geom/cell_tet10.h \
+        geom/cell_tet14.h \
         geom/cell_tet4.h \
         geom/compare_elems_by_level.h \
         geom/edge.h \
@@ -140,6 +142,7 @@ include_HEADERS =  \
         geom/elem_internal.h \
         geom/elem_quality.h \
         geom/elem_range.h \
+        geom/elem_side_builder.h \
         geom/face.h \
         geom/face_inf_quad.h \
         geom/face_inf_quad4.h \
@@ -155,6 +158,7 @@ include_HEADERS =  \
         geom/face_tri3_shell.h \
         geom/face_tri3_subdivision.h \
         geom/face_tri6.h \
+        geom/face_tri7.h \
         geom/node.h \
         geom/node_elem.h \
         geom/node_range.h \
@@ -209,12 +213,14 @@ include_HEADERS =  \
         mesh/off_io.h \
         mesh/parallel_mesh.h \
         mesh/patch.h \
+        mesh/poly2tri_triangulator.h \
         mesh/postscript_io.h \
         mesh/replicated_mesh.h \
         mesh/serial_mesh.h \
         mesh/sync_refinement_flags.h \
         mesh/tecplot_io.h \
         mesh/tetgen_io.h \
+        mesh/triangulator_interface.h \
         mesh/ucd_io.h \
         mesh/unstructured_mesh.h \
         mesh/unv_io.h \
@@ -242,6 +248,7 @@ include_HEADERS =  \
         numerics/eigen_sparse_vector.h \
         numerics/fem_function_base.h \
         numerics/function_base.h \
+        numerics/lumped_mass_matrix.h \
         numerics/numeric_vector.h \
         numerics/parsed_fem_function.h \
         numerics/parsed_fem_function_parameter.h \
@@ -358,9 +365,12 @@ include_HEADERS =  \
         solvers/eigen_time_solver.h \
         solvers/euler2_solver.h \
         solvers/euler_solver.h \
+        solvers/file_history_data.h \
         solvers/file_solution_history.h \
         solvers/first_order_unsteady_solver.h \
+        solvers/history_data.h \
         solvers/linear_solver.h \
+        solvers/memory_history_data.h \
         solvers/memory_solution_history.h \
         solvers/newmark_solver.h \
         solvers/newton_solver.h \
@@ -437,6 +447,7 @@ include_HEADERS =  \
         timpi_shims/request.h \
         timpi_shims/standard_type.h \
         timpi_shims/status.h \
+        utils/chunked_mapvector.h \
         utils/compare_types.h \
         utils/enum_to_string.h \
         utils/error_vector.h \

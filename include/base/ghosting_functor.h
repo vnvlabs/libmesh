@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -178,7 +178,7 @@ public:
   /**
    * Virtual destructor; this is an abstract base class.
    */
-  virtual ~GhostingFunctor() {}
+  virtual ~GhostingFunctor() = default;
 
   /**
    * A clone() is needed because GhostingFunctor can not be shared between

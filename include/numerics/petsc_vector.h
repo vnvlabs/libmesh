@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -51,10 +51,9 @@
 #include <unordered_map>
 #include <limits>
 
-#ifdef LIBMESH_HAVE_CXX11_THREAD
 #include <atomic>
 #include <mutex>
-#endif
+#include <condition_variable>
 
 namespace libMesh
 {
@@ -139,7 +138,10 @@ public:
 
   virtual void close () override;
 
-  virtual void clear () override;
+  /**
+   * clear() is called from the destructor, so it should not throw.
+   */
+  virtual void clear () noexcept override;
 
   virtual void zero () override;
 
@@ -408,14 +410,10 @@ private:
 
   /**
    * Mutex for _get_array and _restore_array.  This is part of the
-   * object to keep down thread contention when reading frmo multiple
+   * object to keep down thread contention when reading from multiple
    * PetscVectors simultaneously
    */
-#ifdef LIBMESH_HAVE_CXX11_THREAD
-  mutable std::mutex _petsc_vector_mutex;
-#else
-  mutable Threads::spin_mutex _petsc_vector_mutex;
-#endif
+  mutable std::mutex _petsc_get_restore_array_mutex;
 
   /**
    * Queries the array (and the local form if the vector is ghosted)
@@ -660,9 +658,8 @@ void PetscVector<T>::init (const numeric_index_type n,
   // create a sequential vector if on only 1 processor
   if (this->_type == SERIAL)
     {
-      ierr = VecCreateSeq (PETSC_COMM_SELF, petsc_n, &_vec);
-      CHKERRABORT(PETSC_COMM_SELF,ierr);
-
+      ierr = VecCreate(PETSC_COMM_SELF, &_vec);CHKERRABORT(PETSC_COMM_SELF,ierr);
+      ierr = VecSetSizes(_vec, petsc_n, petsc_n); CHKERRABORT(PETSC_COMM_SELF,ierr);
       ierr = VecSetFromOptions (_vec);
       CHKERRABORT(PETSC_COMM_SELF,ierr);
     }
@@ -672,15 +669,14 @@ void PetscVector<T>::init (const numeric_index_type n,
 #ifdef LIBMESH_HAVE_MPI
       PetscInt petsc_n_local=cast_int<PetscInt>(n_local);
       libmesh_assert_less_equal (n_local, n);
-      ierr = VecCreateMPI (this->comm().get(), petsc_n_local, petsc_n,
-                           &_vec);
-      LIBMESH_CHKERR(ierr);
+      // Use more generic function instead of VecCreateSeq/MPI
+      ierr = VecCreate(this->comm().get(), &_vec);LIBMESH_CHKERR(ierr);
+      ierr = VecSetSizes(_vec, petsc_n_local, petsc_n); LIBMESH_CHKERR(ierr);
 #else
       libmesh_assert_equal_to (n_local, n);
-      ierr = VecCreateSeq (PETSC_COMM_SELF, petsc_n, &_vec);
-      CHKERRABORT(PETSC_COMM_SELF,ierr);
+      ierr = VecCreate(PETSC_COMM_SELF, &_vec);CHKERRABORT(PETSC_COMM_SELF,ierr);
+      ierr = VecSetSizes(_vec, petsc_n, petsc_n); CHKERRABORT(PETSC_COMM_SELF,ierr);
 #endif
-
       ierr = VecSetFromOptions (_vec);
       LIBMESH_CHKERR(ierr);
     }
@@ -758,6 +754,13 @@ void PetscVector<T>::init (const numeric_index_type n,
                          &_vec);
   LIBMESH_CHKERR(ierr);
 
+  // Add a prefix so that we can at least distinguish a ghosted vector from a
+  // nonghosted vector when using a petsc option.
+  // PETSc does not fully support VecGhost on GPU yet. This change allows us to
+  // trigger a nonghosted vector to use GPU without bothering the ghosted vectors.
+  ierr = PetscObjectAppendOptionsPrefix((PetscObject)_vec,"ghost_");
+  LIBMESH_CHKERR(ierr);
+
   ierr = VecSetFromOptions (_vec);
   LIBMESH_CHKERR(ierr);
 
@@ -829,19 +832,20 @@ void PetscVector<T>::close ()
 
 template <typename T>
 inline
-void PetscVector<T>::clear ()
+void PetscVector<T>::clear () noexcept
 {
-  parallel_object_only();
+  exceptionless_parallel_object_only();
 
   if (this->initialized())
     this->_restore_array();
 
   if ((this->initialized()) && (this->_destroy_vec_on_exit))
     {
-      PetscErrorCode ierr=0;
-
-      ierr = VecDestroy(&_vec);
-      LIBMESH_CHKERR(ierr);
+      // If we encounter an error here, print a warning but otherwise
+      // keep going since we may be recovering from an exception.
+      PetscErrorCode ierr = VecDestroy(&_vec);
+      if (ierr)
+        libmesh_warning("Warning: VecDestroy returned a non-zero error code which we ignored.");
     }
 
   this->_is_closed = this->_is_initialized = false;

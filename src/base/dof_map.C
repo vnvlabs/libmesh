@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -386,11 +386,10 @@ void DofMap::set_nonlocal_dof_objects(iterator_type objects_begin,
 
   // We know how many of our objects live on each processor, so
   // reserve() space for requests from each.
-  for (auto pair : ghost_objects_from_proc)
+  for (auto [p, size] : ghost_objects_from_proc)
     {
-      const processor_id_type p = pair.first;
       if (p != this->processor_id())
-        requested_ids[p].reserve(pair.second);
+        requested_ids[p].reserve(size);
     }
 
   for (it = objects_begin; it != objects_end; ++it)
@@ -633,11 +632,11 @@ void DofMap::reinit(MeshBase & mesh)
           if (!vg_description.active_on_subdomain(elem->subdomain_id()))
             continue;
 
-          const ElemType type = elem->type();
-
           FEType fe_type = base_fe_type;
 
 #ifdef LIBMESH_ENABLE_AMR
+          const ElemType type = elem->type();
+
           // Make sure we haven't done more p refinement than we can
           // handle
           if (elem->p_level() + base_fe_type.order >
@@ -1127,7 +1126,7 @@ void DofMap::local_variable_indices(std::vector<dof_id_type> & idx,
           // First get any new nodal DOFS
           for (unsigned int n=0; n<n_nodes; n++)
             {
-              Node & node = elem->node_ref(n);
+              const Node & node = elem->node_ref(n);
 
               if (node.processor_id() != this->processor_id())
                 continue;
@@ -1566,15 +1565,11 @@ void DofMap::add_neighbors_to_send_list(MeshBase & mesh)
   std::map<const CouplingMatrix *, std::vector<unsigned int>>
     column_variable_lists;
 
-  for (auto & pr : elements_to_send)
+  for (const auto & [partner, ghost_coupling] : elements_to_send)
     {
-      const Elem * const partner = pr.first;
-
       // We asked ghosting functors not to give us local elements
       libmesh_assert_not_equal_to
         (partner->processor_id(), this->processor_id());
-
-      const CouplingMatrix * ghost_coupling = pr.second;
 
       // Loop over any present coupling matrix column variables if we
       // have a coupling matrix, or just add all variables to
@@ -1743,7 +1738,7 @@ void DofMap::set_implicit_neighbor_dofs(bool implicit_neighbor_dofs)
 }
 
 
-bool DofMap::use_coupled_neighbor_dofs(const MeshBase & mesh) const
+bool DofMap::use_coupled_neighbor_dofs(const MeshBase & /*mesh*/) const
 {
   // If we were asked on the command line, then we need to
   // include sensitivities between neighbor degrees of freedom
@@ -1787,8 +1782,7 @@ bool DofMap::use_coupled_neighbor_dofs(const MeshBase & mesh) const
     bool all_discontinuous_dofs = true;
 
     for (auto var : make_range(this->n_variables()))
-      if (FEAbstract::build (mesh.mesh_dimension(),
-                             this->variable_type(var))->get_continuity() !=  DISCONTINUOUS)
+      if (FEInterface::get_continuity(this->variable_type(var)) !=  DISCONTINUOUS)
         all_discontinuous_dofs = false;
 
     if (all_discontinuous_dofs)
@@ -2295,10 +2289,8 @@ void DofMap::_node_dof_indices (const Elem & elem,
   LOG_SCOPE("_node_dof_indices()", "DofMap");
 
   const unsigned int sys_num = this->sys_number();
-  const std::pair<unsigned int, unsigned int>
-    vg_and_offset = obj.var_to_vg_and_offset(sys_num,vn);
-  const unsigned int vg = vg_and_offset.first;
-  const unsigned int vig = vg_and_offset.second;
+  const auto [vg, vig] =
+    obj.var_to_vg_and_offset(sys_num,vn);
   const unsigned int n_comp = obj.n_comp_group(sys_num,vg);
 
   const VariableGroup & var = this->variable_group(vg);
@@ -2958,14 +2950,12 @@ std::string DofMap::get_info() const
     n_rhss = 0;
   long double avg_constraint_length = 0.;
 
-  for (const auto & pr : _dof_constraints)
+  for (const auto & [constrained_dof, row] : _dof_constraints)
     {
       // Only count local constraints, then sum later
-      const dof_id_type constrained_dof = pr.first;
       if (!this->local_index(constrained_dof))
         continue;
 
-      const DofConstraintRow & row = pr.second;
       std::size_t rowsize = row.size();
 
       max_constraint_length = std::max(max_constraint_length,
@@ -3045,7 +3035,7 @@ std::string DofMap::get_info() const
 }
 
 
-template bool DofMap::is_evaluable<Elem>(const Elem &, unsigned int) const;
-template bool DofMap::is_evaluable<Node>(const Node &, unsigned int) const;
+template LIBMESH_EXPORT bool DofMap::is_evaluable<Elem>(const Elem &, unsigned int) const;
+template LIBMESH_EXPORT bool DofMap::is_evaluable<Node>(const Node &, unsigned int) const;
 
 } // namespace libMesh

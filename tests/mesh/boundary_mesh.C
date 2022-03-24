@@ -18,7 +18,7 @@ class BoundaryMeshTest : public CppUnit::TestCase {
    * boundary meshes correctly.
    */
 public:
-  CPPUNIT_TEST_SUITE( BoundaryMeshTest );
+  LIBMESH_CPPUNIT_TEST_SUITE( BoundaryMeshTest );
 
 #if LIBMESH_DIM > 1
   CPPUNIT_TEST( testMesh );
@@ -74,7 +74,7 @@ protected:
 
     for (auto & elem : _mesh->active_element_ptr_range())
       {
-        const Point c = elem->centroid();
+        const Point c = elem->vertex_average();
         if (c(0) < 0.6 && c(1) < 0.4)
           elem->subdomain_id() = 1;
         else
@@ -127,7 +127,7 @@ protected:
 
     for (auto & elem : _mesh->active_element_ptr_range())
       {
-        const Point c = elem->centroid();
+        const Point c = elem->vertex_average();
         if (c(0) < 0.6 && c(1) < 0.4)
           {
             if (c(0) > 0.4)
@@ -167,6 +167,8 @@ public:
 
   void testMesh()
   {
+    LOG_UNIT_TEST;
+
     // There'd better be 3*5 + 5 elements in the interior plus right
     // boundary
     CPPUNIT_ASSERT_EQUAL(static_cast<dof_id_type>(20),
@@ -227,7 +229,7 @@ public:
             CPPUNIT_ASSERT_EQUAL(pip->level(), elem->level());
 
             // We only added right edges
-            LIBMESH_ASSERT_FP_EQUAL(0.8, elem->centroid()(0),
+            LIBMESH_ASSERT_FP_EQUAL(0.8, elem->vertex_average()(0),
                                     TOLERANCE*TOLERANCE);
           }
         else
@@ -256,7 +258,7 @@ public:
         CPPUNIT_ASSERT_EQUAL(pip->level(), elem->level());
 
         // We only added left edges
-        LIBMESH_ASSERT_FP_EQUAL(0.2, elem->centroid()(0),
+        LIBMESH_ASSERT_FP_EQUAL(0.2, elem->vertex_average()(0),
                                 TOLERANCE*TOLERANCE);
       }
 
@@ -307,7 +309,7 @@ class BoundaryRefinedMeshTest : public BoundaryMeshTest {
    * shared on the underlying quads, and so on.
    */
 public:
-  CPPUNIT_TEST_SUITE( BoundaryRefinedMeshTest );
+  LIBMESH_CPPUNIT_TEST_SUITE( BoundaryRefinedMeshTest );
 
 #if LIBMESH_DIM > 1
   CPPUNIT_TEST( testMesh );
@@ -333,6 +335,8 @@ public:
 
   void testMesh()
   {
+    LOG_UNIT_TEST;
+
     // There'd better be 3*5*4 + 5*2 active elements in the interior
     // plus right boundary
     CPPUNIT_ASSERT_EQUAL(static_cast<dof_id_type>(70),

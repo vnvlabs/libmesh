@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -44,6 +44,7 @@
 #include "libmesh/enum_to_string.h"
 #include "libmesh/auto_ptr.h" // libmesh_make_unique
 #include "libmesh/point_locator_nanoflann.h"
+#include "libmesh/elem_side_builder.h"
 
 namespace libMesh
 {
@@ -831,13 +832,11 @@ std::string MeshBase::get_info(const unsigned int verbosity /* = 0 */, const boo
         BoundingBox bbox;
       };
       std::map<boundary_id_type, NodesetInfo> nodeset_info_map;
-      for (const auto & pair : this->get_boundary_info().get_nodeset_map())
+      for (const auto & [node, id] : this->get_boundary_info().get_nodeset_map())
         {
-          const Node * node = pair.first;
           if (!include_object(*node))
             continue;
 
-          const auto id = pair.second;
           NodesetInfo & info = nodeset_info_map[id];
 
           ++info.num_nodes;
@@ -854,7 +853,7 @@ std::string MeshBase::get_info(const unsigned int verbosity /* = 0 */, const boo
             oss << "  None\n";
         }
 
-      const auto & nodeset_name_map = this->get_boundary_info().get_sideset_name_map();
+      const auto & nodeset_name_map = this->get_boundary_info().get_nodeset_name_map();
       for (const auto id : nodeset_ids)
         {
           NodesetInfo & info = nodeset_info_map[id];
@@ -910,6 +909,7 @@ std::string MeshBase::get_info(const unsigned int verbosity /* = 0 */, const boo
         std::set<dof_id_type> node_ids;
         BoundingBox bbox;
       };
+      ElemSideBuilder side_builder;
       std::map<boundary_id_type, SidesetInfo> sideset_info_map;
       for (const auto & pair : this->get_boundary_info().get_sideset_map())
         {
@@ -921,21 +921,21 @@ std::string MeshBase::get_info(const unsigned int verbosity /* = 0 */, const boo
           SidesetInfo & info = sideset_info_map[id];
 
           const auto s = pair.second.first;
-          const auto side = elem->build_side_ptr(s);
+          const Elem & side = side_builder(*elem, s);
 
           ++info.num_sides;
-          info.side_elem_types.insert(side->type());
+          info.side_elem_types.insert(side.type());
           info.elem_types.insert(elem->type());
           info.elem_ids.insert(elem->id());
 
-          for (const Node & node : side->node_ref_range())
+          for (const Node & node : side.node_ref_range())
             if (include_object(node))
               info.node_ids.insert(node.id());
 
           if (verbosity > 1)
           {
-            info.volume += side->volume();
-            info.bbox.union_with(side->loose_bounding_box());
+            info.volume += side.volume();
+            info.bbox.union_with(side.loose_bounding_box());
           }
         }
 
@@ -1234,6 +1234,11 @@ void MeshBase::partition (const unsigned int n_parts)
       // Make sure any other locally cached data is correct
       this->update_post_partitioning();
     }
+}
+
+void MeshBase::all_second_order (const bool full_ordered)
+{
+  this->all_second_order_range(this->element_ptr_range(), full_ordered);
 }
 
 unsigned int MeshBase::recalculate_n_partitions()
@@ -1584,7 +1589,7 @@ MeshBase::post_dofobject_moves(MeshBase && other_mesh)
   // _shared_functors
   _shared_functors = std::move(other_mesh._shared_functors);
 
-  for (const auto sf : _shared_functors )
+  for (const auto & sf : _shared_functors )
   {
     (sf.second)->set_mesh(this);
   }

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -270,10 +270,6 @@ void set_system_parameters(HeatSystem &system, FEMParameters &param)
         }
         else
         libmesh_error_msg("Unrecognized solution history type: " << param.solution_history_type);
-
-        // The Memory/File Solution History object we will set the system SolutionHistory object to
-        FileSolutionHistory heatsystem_solution_history(system);
-        system.time_solver->set_solution_history(heatsystem_solution_history);
 
       }
     }
@@ -632,6 +628,9 @@ int main (int argc, char ** argv)
       // The quantity partialQ/partialp - partialR/partialp(u,z;p) is evaluated internally by the ImplicitSystem::adjoint_qoi_parameter_sensitivity function.
       // This sensitivity evaluation is called internally by an overloaded TimeSolver::integrate_adjoint_sensitivity method which we call below.
 
+      // Reset the time
+      system.time = 0.0;
+
       // Prepare the quantities we need to pass to TimeSolver::integrate_adjoint_sensitivity
       QoISet qois;
 
@@ -726,7 +725,7 @@ int main (int argc, char ** argv)
         libmesh_error_msg_if(std::abs(system.time - (1.0089)) >= 2.e-4,
                              "Mismatch in end time reached by adaptive timestepper!");
 
-        libmesh_error_msg_if(std::abs(total_sensitivity - 4.87767) >= 2.e-4,
+        libmesh_error_msg_if(std::abs(total_sensitivity - 4.87767) >= 3.e-3,
                              "Mismatch in sensitivity gold value!");
       }
       else

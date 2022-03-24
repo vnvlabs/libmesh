@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -47,7 +47,7 @@ public:
     calculate_xyz = true;
   }
 
-  virtual ~FEXYZMap(){}
+  virtual ~FEXYZMap() = default;
 
   /**
    * Special implementation for XYZ finite elements

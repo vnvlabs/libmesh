@@ -25,6 +25,10 @@ using namespace libMesh;
 
 template <typename PartitionerSubclass, typename MeshClass>
 class PartitionerTest : public CppUnit::TestCase {
+protected:
+
+  std::string libmesh_suite_name;
+
 public:
   void setUp()
   {}
@@ -74,15 +78,27 @@ public:
           nonempty_procs++;
       }
 
-    // Unfortunately, it turns out that our METIS and ParMETIS
-    // partitioners *do* suck, and can't reliabily give us more than
+    // Unfortunately, it turns out that our partitioners *do* suck:
+    //
+    // * Metis and ParMetis can't reliabily give us more than
     // 13 non-empty ranks on the above 27 element mesh.
+    //
+    // * Our SFC partitioners are suboptimal with 8 or more ranks for
+    // only 27 elements: the smallest integer block size for 27/8
+    // elements-per-rank that won't overflow is 4, but that only fills
+    // 7 ranks, because we don't equidistribute the underflow.
     CPPUNIT_ASSERT(nonempty_procs >= n_nonempty ||
-                   nonempty_procs >= 13);
+                   nonempty_procs >= 13 ||
+                   (nonempty_procs >= 7 &&
+                    n_nonempty == 8) ||
+                   (nonempty_procs >= 9 &&
+                    n_nonempty >= 10));
   }
 
   void testPartitionEmpty()
   {
+    LOG_UNIT_TEST;
+
     MeshClass mesh(*TestCommWorld);
     PartitionerSubclass newpart;
 
@@ -93,16 +109,22 @@ public:
 
   void testPartition1()
   {
+    LOG_UNIT_TEST;
+
     this->testPartition(1);
   }
 
   void testPartition2()
   {
+    LOG_UNIT_TEST;
+
     this->testPartition(2);
   }
 
   void testPartitionNProc()
   {
+    LOG_UNIT_TEST;
+
     this->testPartition(TestCommWorld->size());
   }
 };
@@ -111,6 +133,13 @@ public:
   class PartitionerTest_##partitionersubclass##_##meshclass :               \
     public PartitionerTest<partitionersubclass, meshclass> {                \
   public:                                                                   \
+  PartitionerTest_##partitionersubclass##_##meshclass() :                   \
+    PartitionerTest<partitionersubclass,meshclass>() {                      \
+    if (unitlog->summarized_logs_enabled())                                 \
+      this->libmesh_suite_name = "PartitionerTest";                         \
+    else                                                                    \
+      this->libmesh_suite_name = "PartitionerTest_" #partitionersubclass "_" #meshclass; \
+  }                                                                         \
   CPPUNIT_TEST_SUITE( PartitionerTest_##partitionersubclass##_##meshclass); \
   PARTITIONERTEST                                                           \
   CPPUNIT_TEST_SUITE_END();                                                 \

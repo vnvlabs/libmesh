@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -68,7 +68,21 @@ const Real Hex::_master_points[27][3] =
     {0, 0, 1}
   };
 
-
+const unsigned int Hex::edge_sides_map[12][2] =
+  {
+    {0, 1}, // Edge 0
+    {0, 2}, // Edge 1
+    {0, 3}, // Edge 2
+    {0, 4}, // Edge 3
+    {1, 4}, // Edge 4
+    {1, 2}, // Edge 5
+    {2, 3}, // Edge 6
+    {3, 4}, // Edge 7
+    {1, 5}, // Edge 8
+    {2, 5}, // Edge 9
+    {3, 5}, // Edge 10
+    {4, 5}  // Edge 11
+  };
 
 
 // ------------------------------------------------------------
@@ -156,15 +170,16 @@ bool Hex::is_edge_on_side(const unsigned int e,
   libmesh_assert_less (e, this->n_edges());
   libmesh_assert_less (s, this->n_sides());
 
-  return (Hex8::edge_sides_map[e][0] == s ||
-          Hex8::edge_sides_map[e][1] == s);
+  return (edge_sides_map[e][0] == s || edge_sides_map[e][1] == s);
 }
 
 
 
 std::vector<unsigned int> Hex::sides_on_edge(const unsigned int e) const
 {
-  return {Hex8::edge_sides_map[e][0], Hex8::edge_sides_map[e][1]};
+  libmesh_assert_less(e, this->n_edges());
+
+  return {edge_sides_map[e][0], edge_sides_map[e][1]};
 }
 
 

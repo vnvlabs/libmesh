@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -37,54 +37,6 @@
 
 namespace libMesh
 {
-
-/**
- * RAII struct which calls VecGhostGetLocalForm() in its constructor
- * and VecGhostRestoreLocalForm() in its destructor. Provides public
- * access to the resulting "local form" via the public "local_form"
- * member.
- */
-template <typename T>
-struct VecGhostLocalFormRAII
-{
-  /**
-   * Constructor. If enabled, calls VecGhostGetLocalForm(), otherwise
-   * just treats the Vec itself as the local form.
-   *
-   * Note that we are "abusing" the const PetscVector's ability
-   * to return a non-const Vec object via the vec() member. This is because
-   * there is currently no way to indicate to PETSc that a local form will be
-   * used in a read-only manner.
-   */
-  VecGhostLocalFormRAII(const PetscVector<T> & vec_in, bool enabled_in)
-    : vec(vec_in),
-      enabled(enabled_in)
-  {
-    if (enabled)
-      {
-        PetscErrorCode ierr = VecGhostGetLocalForm (vec.vec(), &local_form);
-        LIBMESH_CHKERR2(vec.comm(), ierr);
-      }
-    else
-      local_form = vec.vec();
-  }
-
-  /**
-   * Destructor. Calls VecGhostRestoreLocalForm() only if enabled.
-   * Does not check error messages since we should not throw from
-   * destructors in general.
-   */
-  ~VecGhostLocalFormRAII()
-  {
-    if (enabled)
-      VecGhostRestoreLocalForm (vec.vec(), &local_form);
-  }
-
-  const PetscVector<T> & vec;
-  bool enabled;
-  Vec local_form;
-};
-
 //-----------------------------------------------------------------------
 // PetscVector members
 
@@ -195,6 +147,7 @@ void PetscVector<T>::set (const numeric_index_type i, const T value)
   PetscInt i_val = static_cast<PetscInt>(i);
   PetscScalar petsc_value = PS(value);
 
+  std::scoped_lock lock(this->_numeric_vector_mutex);
   ierr = VecSetValues (_vec, 1, &i_val, &petsc_value, INSERT_VALUES);
   LIBMESH_CHKERR(ierr);
 
@@ -237,6 +190,7 @@ void PetscVector<T>::add (const numeric_index_type i, const T value)
   PetscInt i_val = static_cast<PetscInt>(i);
   PetscScalar petsc_value = PS(value);
 
+  std::scoped_lock lock(this->_numeric_vector_mutex);
   ierr = VecSetValues (_vec, 1, &i_val, &petsc_value, ADD_VALUES);
   LIBMESH_CHKERR(ierr);
 
@@ -259,6 +213,7 @@ void PetscVector<T>::add_vector (const T * v,
   const PetscInt * i_val = reinterpret_cast<const PetscInt *>(dof_indices.data());
   const PetscScalar * petsc_value = pPS(v);
 
+  std::scoped_lock lock(this->_numeric_vector_mutex);
   ierr = VecSetValues (_vec, cast_int<PetscInt>(dof_indices.size()),
                        i_val, petsc_value, ADD_VALUES);
   LIBMESH_CHKERR(ierr);
@@ -389,10 +344,12 @@ void PetscVector<T>::add (const T a_in, const NumericVector<T> & v_in)
 
   libmesh_assert_equal_to (this->size(), v->size());
 
-  VecGhostLocalFormRAII<T> ghost(*this, this->type() == GHOSTED);
-  VecGhostLocalFormRAII<T> v_ghost(*v, this->type() == GHOSTED);
-  PetscErrorCode ierr = VecAXPY(ghost.local_form, a, v_ghost.local_form);
+  PetscErrorCode ierr = VecAXPY(_vec, a, v->vec());
   LIBMESH_CHKERR(ierr);
+  if (this->type() == GHOSTED)
+    VecGhostUpdateBeginEnd(this->comm(), _vec, INSERT_VALUES, SCATTER_FORWARD);
+
+  this->_is_closed = true;
 }
 
 
@@ -408,6 +365,7 @@ void PetscVector<T>::insert (const T * v,
 
   PetscErrorCode ierr=0;
   PetscInt * idx_values = numeric_petsc_cast(dof_indices.data());
+  std::scoped_lock lock(this->_numeric_vector_mutex);
   ierr = VecSetValues (_vec, cast_int<PetscInt>(dof_indices.size()),
                        idx_values, pPS(v), INSERT_VALUES);
   LIBMESH_CHKERR(ierr);
@@ -424,9 +382,10 @@ void PetscVector<T>::scale (const T factor_in)
 
   PetscScalar factor = PS(factor_in);
 
-  VecGhostLocalFormRAII<T> ghost(*this, this->type() == GHOSTED);
-  PetscErrorCode ierr = VecScale(ghost.local_form, factor);
+  PetscErrorCode ierr = VecScale(_vec, factor);
   LIBMESH_CHKERR(ierr);
+  if (this->type() == GHOSTED)
+    VecGhostUpdateBeginEnd(this->comm(), _vec, INSERT_VALUES, SCATTER_FORWARD);
 }
 
 template <typename T>
@@ -460,9 +419,10 @@ void PetscVector<T>::abs()
 {
   this->_restore_array();
 
-  VecGhostLocalFormRAII<T> ghost(*this, this->type() == GHOSTED);
-  PetscErrorCode ierr = VecAbs(ghost.local_form);
+  PetscErrorCode ierr = VecAbs(_vec);
   LIBMESH_CHKERR(ierr);
+  if (this->type() == GHOSTED)
+    VecGhostUpdateBeginEnd(this->comm(), _vec, INSERT_VALUES, SCATTER_FORWARD);
 }
 
 template <typename T>
@@ -519,9 +479,10 @@ PetscVector<T>::operator = (const T s_in)
 
   if (this->size() != 0)
     {
-      VecGhostLocalFormRAII<T> ghost(*this, this->type() == GHOSTED);
-      PetscErrorCode ierr = VecSet(ghost.local_form, s);
+      PetscErrorCode ierr = VecSet(_vec, s);
       LIBMESH_CHKERR(ierr);
+      if (this->type() == GHOSTED)
+        VecGhostUpdateBeginEnd(this->comm(), _vec, INSERT_VALUES, SCATTER_FORWARD);
     }
 
   return *this;
@@ -556,33 +517,12 @@ PetscVector<T>::operator = (const PetscVector<T> & v)
 
   PetscErrorCode ierr = 0;
 
-  if (((this->type()==PARALLEL) && (v.type()==GHOSTED)) ||
-      ((this->type()==GHOSTED) && (v.type()==PARALLEL)) ||
-      ((this->type()==GHOSTED) && (v.type()==SERIAL))   ||
-      ((this->type()==SERIAL) && (v.type()==GHOSTED)))
-    {
-      // Allow assignment of a ghosted to a parallel vector since this
-      // causes no difficulty.  See discussion in libmesh-devel of
-      // June 24, 2010.
-      ierr = VecCopy (v._vec, this->_vec);
-      LIBMESH_CHKERR(ierr);
-    }
-  else
-    {
-      // In all other cases, we assert that both vectors are of equal
-      // type.
-      libmesh_assert_equal_to (this->_type, v._type);
+  ierr = VecCopy (v._vec, this->_vec);
+  LIBMESH_CHKERR(ierr);
+  if (this->type() == GHOSTED)
+    VecGhostUpdateBeginEnd(this->comm(), _vec, INSERT_VALUES, SCATTER_FORWARD);
 
-      if (v.size() != 0)
-        {
-          VecGhostLocalFormRAII<T> ghost(*this, this->type() == GHOSTED);
-          VecGhostLocalFormRAII<T> v_ghost(v, this->type() == GHOSTED);
-          ierr = VecCopy (v_ghost.local_form, ghost.local_form);
-          LIBMESH_CHKERR(ierr);
-        }
-    }
-
-  close();
+  this->_is_closed = true;
 
   return *this;
 }
@@ -1067,11 +1007,12 @@ void PetscVector<T>::pointwise_mult (const NumericVector<T> & vec1,
   const PetscVector<T> * vec2_petsc = cast_ptr<const PetscVector<T> *>(&vec2);
 
   // Call PETSc function.
-  VecGhostLocalFormRAII<T> ghost(*this, this->type() == GHOSTED);
-  VecGhostLocalFormRAII<T> v1_ghost(*vec1_petsc, this->type() == GHOSTED);
-  VecGhostLocalFormRAII<T> v2_ghost(*vec2_petsc, this->type() == GHOSTED);
-  PetscErrorCode ierr = VecPointwiseMult(ghost.local_form, v1_ghost.local_form, v2_ghost.local_form);
+  PetscErrorCode ierr = VecPointwiseMult(_vec, vec1_petsc->vec(), vec2_petsc->vec());
   LIBMESH_CHKERR(ierr);
+  if (this->type() == GHOSTED)
+    VecGhostUpdateBeginEnd(this->comm(), _vec, INSERT_VALUES, SCATTER_FORWARD);
+
+  this->_is_closed = true;
 }
 
 
@@ -1214,30 +1155,24 @@ void PetscVector<T>::_get_array(bool read_only) const
 {
   libmesh_assert (this->initialized());
 
-#ifdef LIBMESH_HAVE_CXX11_THREAD
-  std::atomic_thread_fence(std::memory_order_acquire);
-#else
-  Threads::spin_mutex::scoped_lock lock(_petsc_vector_mutex);
-#endif
+  const bool initially_array_is_present = _array_is_present.load(std::memory_order_acquire);
 
   // If the values have already been retrieved and we're currently
   // trying to get a non-read only view (ie read/write) and the
   // values are currently read only... then we need to restore
   // the array first... and then retrieve it again.
-  if (_array_is_present && !read_only && _values_read_only)
+  if (initially_array_is_present && !read_only && _values_read_only)
     _restore_array();
 
   // If we already have a read/write array - and we're trying
   // to get a read only array - let's just use the read write
-  if (_array_is_present && read_only && !_values_read_only)
+  if (initially_array_is_present && read_only && !_values_read_only)
     _read_only_values = _values;
 
-  if (!_array_is_present)
+  if (!initially_array_is_present)
     {
-#ifdef LIBMESH_HAVE_CXX11_THREAD
-      std::lock_guard<std::mutex> lock(_petsc_vector_mutex);
-#endif
-      if (!_array_is_present)
+      std::scoped_lock lock(_petsc_get_restore_array_mutex);
+      if (!_array_is_present.load(std::memory_order_relaxed))
         {
           PetscErrorCode ierr=0;
           if (this->type() != GHOSTED)
@@ -1285,12 +1220,7 @@ void PetscVector<T>::_get_array(bool read_only) const
             _first = static_cast<numeric_index_type>(petsc_first);
             _last = static_cast<numeric_index_type>(petsc_last);
           }
-#ifdef LIBMESH_HAVE_CXX11_THREAD
-          std::atomic_thread_fence(std::memory_order_release);
-          _array_is_present.store(true, std::memory_order_relaxed);
-#else
-          _array_is_present = true;
-#endif
+          _array_is_present.store(true, std::memory_order_release);
         }
     }
 }
@@ -1303,20 +1233,11 @@ void PetscVector<T>::_restore_array() const
   libmesh_error_msg_if(_values_manually_retrieved,
                        "PetscVector values were manually retrieved but are being automatically restored!");
 
-#ifdef LIBMESH_HAVE_CXX11_THREAD
-  std::atomic_thread_fence(std::memory_order_acquire);
-#else
-  Threads::spin_mutex::scoped_lock lock(_petsc_vector_mutex);
-#endif
-
   libmesh_assert (this->initialized());
-  if (_array_is_present)
+  if (_array_is_present.load(std::memory_order_acquire))
     {
-#ifdef LIBMESH_HAVE_CXX11_THREAD
-      std::lock_guard<std::mutex> lock(_petsc_vector_mutex);
-#endif
-
-      if (_array_is_present)
+      std::scoped_lock lock(_petsc_get_restore_array_mutex);
+      if (_array_is_present.load(std::memory_order_relaxed))
         {
           PetscErrorCode ierr=0;
           if (this->type() != GHOSTED)
@@ -1343,12 +1264,7 @@ void PetscVector<T>::_restore_array() const
               _local_form = nullptr;
               _local_size = 0;
             }
-#ifdef LIBMESH_HAVE_CXX11_THREAD
-          std::atomic_thread_fence(std::memory_order_release);
-          _array_is_present.store(false, std::memory_order_relaxed);
-#else
-          _array_is_present = false;
-#endif
+          _array_is_present.store(false, std::memory_order_release);
         }
     }
 }
@@ -1358,7 +1274,7 @@ void PetscVector<T>::_restore_array() const
 
 //------------------------------------------------------------------
 // Explicit instantiations
-template class PetscVector<Number>;
+template class LIBMESH_EXPORT PetscVector<Number>;
 
 } // namespace libMesh
 

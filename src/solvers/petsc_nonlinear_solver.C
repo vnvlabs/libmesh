@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -166,7 +166,19 @@ extern "C"
       rc.solver->matvec (*rc.sys.current_local_solution.get(), &R, nullptr, rc.sys);
 
     else if (rc.solver->residual_and_jacobian_object != nullptr)
-      rc.solver->residual_and_jacobian_object->residual_and_jacobian (*rc.sys.current_local_solution.get(), &R, nullptr, rc.sys);
+    {
+      auto & jac = rc.sys.get_system_matrix();
+
+      if (rc.solver->_zero_out_jacobian)
+        jac.zero();
+
+      rc.solver->residual_and_jacobian_object->residual_and_jacobian(
+          *rc.sys.current_local_solution.get(), &R, &jac, rc.sys);
+
+      jac.close();
+      rc.sys.get_dof_map().enforce_constraints_on_jacobian(rc.sys, &jac);
+      jac.close();
+    }
 
     else
       libmesh_error_msg("Error! Unable to compute residual and/or Jacobian!");
@@ -404,11 +416,35 @@ extern "C"
       solver->_current_nonlinear_iteration_number = cast_int<unsigned>(n_iterations);
     }
 
+    //-----------------------------------------------------------------------------
+    // if the user has provided both function pointers and objects only the pointer
+    // will be used, so catch that as an error
+    libmesh_error_msg_if(solver->jacobian && solver->jacobian_object,
+                         "ERROR: cannot specify both a function and object to compute the Jacobian!");
+
+    libmesh_error_msg_if(solver->matvec && solver->residual_and_jacobian_object,
+                         "ERROR: cannot specify both a function and object to compute the combined Residual & Jacobian!");
+
     NonlinearImplicitSystem & sys = solver->system();
+
     PetscMatrix<Number> PC(pc, sys.comm());
     PetscMatrix<Number> Jac(jac, sys.comm());
     PetscVector<Number> & X_sys = *cast_ptr<PetscVector<Number> *>(sys.solution.get());
     PetscVector<Number> X_global(x, sys.comm());
+
+    // We already computed the Jacobian during the residual evaluation
+    if (solver->residual_and_jacobian_object)
+    {
+      auto & sys_mat = static_cast<PetscMatrix<Number> &>(sys.get_system_matrix());
+
+      // We could be doing matrix-free
+      if (jac && jac != sys_mat.mat())
+        Jac.close();
+      if (pc && pc != sys_mat.mat())
+        PC.close();
+
+      return ierr;
+    }
 
     // Set the dof maps
     PC.attach_dof_map(sys.get_dof_map());
@@ -428,14 +464,6 @@ extern "C"
     if (solver->_zero_out_jacobian)
       PC.zero();
 
-    //-----------------------------------------------------------------------------
-    // if the user has provided both function pointers and objects only the pointer
-    // will be used, so catch that as an error
-    libmesh_error_msg_if(solver->jacobian && solver->jacobian_object,
-                         "ERROR: cannot specify both a function and object to compute the Jacobian!");
-
-    libmesh_error_msg_if(solver->matvec && solver->residual_and_jacobian_object,
-                         "ERROR: cannot specify both a function and object to compute the combined Residual & Jacobian!");
 
     if (solver->jacobian != nullptr)
       solver->jacobian(*sys.current_local_solution.get(), PC, sys);
@@ -445,9 +473,6 @@ extern "C"
 
     else if (solver->matvec != nullptr)
       solver->matvec(*sys.current_local_solution.get(), nullptr, &PC, sys);
-
-    else if (solver->residual_and_jacobian_object != nullptr)
-      solver->residual_and_jacobian_object->residual_and_jacobian (*sys.current_local_solution.get(), nullptr, &PC, sys);
 
     else
       libmesh_error_msg("Error! Unable to compute residual and/or Jacobian!");
@@ -1014,7 +1039,7 @@ int PetscNonlinearSolver<T>::get_total_linear_iterations()
 
 //------------------------------------------------------------------
 // Explicit instantiations
-template class PetscNonlinearSolver<Number>;
+template class LIBMESH_EXPORT PetscNonlinearSolver<Number>;
 
 } // namespace libMesh
 

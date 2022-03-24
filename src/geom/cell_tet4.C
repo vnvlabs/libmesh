@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -54,16 +54,6 @@ const unsigned int Tet4::edge_nodes_map[Tet4::num_edges][Tet4::nodes_per_edge] =
     {0, 2}, // Edge 2
     {0, 3}, // Edge 3
     {1, 3}, // Edge 4
-    {2, 3}  // Edge 5
-  };
-
-const unsigned int Tet4::edge_sides_map[Tet4::num_edges][2] =
-  {
-    {0, 1}, // Edge 0
-    {0, 2}, // Edge 1
-    {0, 3}, // Edge 2
-    {1, 3}, // Edge 3
-    {1, 2}, // Edge 4
     {2, 3}  // Edge 5
   };
 
@@ -240,7 +230,7 @@ void Tet4::connectivity(const unsigned int libmesh_dbg_var(sc),
 
 #ifdef LIBMESH_ENABLE_AMR
 
-const float Tet4::_embedding_matrix[Tet4::num_children][Tet4::num_nodes][Tet4::num_nodes] =
+const Real Tet4::_embedding_matrix[Tet4::num_children][Tet4::num_nodes][Tet4::num_nodes] =
   {
     // embedding matrix for child 0
     {
@@ -318,6 +308,13 @@ const float Tet4::_embedding_matrix[Tet4::num_children][Tet4::num_nodes][Tet4::n
 #endif // #ifdef LIBMESH_ENABLE_AMR
 
 
+
+
+
+Point Tet4::true_centroid () const
+{
+  return Elem::vertex_average();
+}
 
 
 
@@ -411,9 +408,9 @@ bool Tet4::contains_point (const Point & p, Real tol) const
 
 
 #ifdef LIBMESH_ENABLE_AMR
-float Tet4::embedding_matrix (const unsigned int i,
-                              const unsigned int j,
-                              const unsigned int k) const
+Real Tet4::embedding_matrix (const unsigned int i,
+                             const unsigned int j,
+                             const unsigned int k) const
 {
   // Choose an optimal diagonal, if one has not already been selected
   this->choose_diagonal();
@@ -590,6 +587,7 @@ void Tet4::permute(unsigned int perm_num)
   for (unsigned int i = 0; i != rotate; ++i)
     {
       swap3nodes(0,1,2);
+      swap3neighbors(1,2,3);
     }
 
   switch (side) {
@@ -597,16 +595,26 @@ void Tet4::permute(unsigned int perm_num)
     break;
   case 1:
     swap3nodes(0,2,3);
+    swap3neighbors(0,2,1);
     break;
   case 2:
     swap3nodes(2,0,3);
+    swap3neighbors(0,1,2);
     break;
   case 3:
     swap3nodes(2,1,3);
+    swap3neighbors(0,1,3);
     break;
   default:
     libmesh_error();
   }
+}
+
+
+ElemType Tet4::side_type (const unsigned int libmesh_dbg_var(s)) const
+{
+  libmesh_assert_less (s, 4);
+  return TRI3;
 }
 
 

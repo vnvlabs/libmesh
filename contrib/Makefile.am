@@ -79,6 +79,15 @@ if LIBMESH_ENABLE_EXODUS_V522
   prof_libs  += exodusii/v5.22/exodus/libprof.la
   oprof_libs += exodusii/v5.22/exodus/liboprof.la
 endif
+
+if LIBMESH_ENABLE_EXODUS_V811
+  SUBDIRS    += exodusii/v8.11/exodus
+  opt_libs   += exodusii/v8.11/exodus/libopt.la
+  dbg_libs   += exodusii/v8.11/exodus/libdbg.la
+  devel_libs += exodusii/v8.11/exodus/libdevel.la
+  prof_libs  += exodusii/v8.11/exodus/libprof.la
+  oprof_libs += exodusii/v8.11/exodus/liboprof.la
+endif
 endif
 
 
@@ -100,6 +109,25 @@ if LIBMESH_ENABLE_NEMESIS_V522
   prof_libs  += nemesis/v5.22/nemesis/libprof.la
   oprof_libs += nemesis/v5.22/nemesis/liboprof.la
 endif
+
+if LIBMESH_ENABLE_NEMESIS_V811
+  SUBDIRS    += nemesis/v8.11/nemesis
+  opt_libs   += nemesis/v8.11/nemesis/libopt.la
+  dbg_libs   += nemesis/v8.11/nemesis/libdbg.la
+  devel_libs += nemesis/v8.11/nemesis/libdevel.la
+  prof_libs  += nemesis/v8.11/nemesis/libprof.la
+  oprof_libs += nemesis/v8.11/nemesis/liboprof.la
+endif
+endif
+
+
+if LIBMESH_ENABLE_POLY2TRI
+  SUBDIRS    += poly2tri/modified/
+  opt_libs   += poly2tri/modified/libopt.la
+  dbg_libs   += poly2tri/modified/libdbg.la
+  devel_libs += poly2tri/modified/libdevel.la
+  prof_libs  += poly2tri/modified/libprof.la
+  oprof_libs += poly2tri/modified/liboprof.la
 endif
 
 
@@ -215,17 +243,24 @@ if LIBMESH_ENABLE_NANOFLANN
   # header-only library - no library dependencies
 endif
 
-if LIBMESH_ENABLE_METAPHYSICL
-  SUBDIRS += metaphysicl
-  # header-only library for the parts we use - no library dependencies
-endif
-
 SUBDIRS += timpi
 opt_libs   += timpi/src/libtimpi_opt.la
 dbg_libs   += timpi/src/libtimpi_dbg.la
 devel_libs += timpi/src/libtimpi_devel.la
 prof_libs  += timpi/src/libtimpi_prof.la
 oprof_libs += timpi/src/libtimpi_oprof.la
+
+
+######################################################################
+# This must come *after* timpi - we now use TIMPI headers in
+# MetaPhysicL when they're available
+######################################################################
+if LIBMESH_ENABLE_METAPHYSICL
+if BUILD_METAPHYSICL
+  SUBDIRS += metaphysicl
+  # header-only library for the parts we use - no library dependencies
+endif
+endif
 
 
 

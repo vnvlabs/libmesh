@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -55,17 +55,6 @@ const unsigned int Tet10::edge_nodes_map[Tet10::num_edges][Tet10::nodes_per_edge
     {1, 3, 8}, // Edge 4
     {2, 3, 9}  // Edge 5
   };
-
-const unsigned int Tet10::edge_sides_map[Tet10::num_edges][2] =
-  {
-    {0, 1}, // Edge 0
-    {0, 2}, // Edge 1
-    {0, 3}, // Edge 2
-    {1, 3}, // Edge 3
-    {1, 2}, // Edge 4
-    {2, 3}  // Edge 5
-  };
-
 
 // ------------------------------------------------------------
 // Tet10 class member functions
@@ -158,23 +147,29 @@ bool Tet10::is_child_on_side(const unsigned int /*c*/,
 bool Tet10::has_affine_map() const
 {
   // Make sure edges are straight
-  if (!this->point(4).relative_fuzzy_equals
-      ((this->point(0) + this->point(1))/2))
+  Point v = this->point(1) - this->point(0);
+  if (!v.relative_fuzzy_equals
+      ((this->point(4) - this->point(0))*2, affine_tol))
     return false;
-  if (!this->point(5).relative_fuzzy_equals
-      ((this->point(1) + this->point(2))/2))
+  v = this->point(2) - this->point(1);
+  if (!v.relative_fuzzy_equals
+      ((this->point(5) - this->point(1))*2, affine_tol))
     return false;
-  if (!this->point(6).relative_fuzzy_equals
-      ((this->point(2) + this->point(0))/2))
+  v = this->point(2) - this->point(0);
+  if (!v.relative_fuzzy_equals
+      ((this->point(6) - this->point(0))*2, affine_tol))
     return false;
-  if (!this->point(7).relative_fuzzy_equals
-      ((this->point(3) + this->point(0))/2))
+  v = this->point(3) - this->point(0);
+  if (!v.relative_fuzzy_equals
+      ((this->point(7) - this->point(0))*2, affine_tol))
     return false;
-  if (!this->point(8).relative_fuzzy_equals
-      ((this->point(3) + this->point(1))/2))
+  v = this->point(3) - this->point(1);
+  if (!v.relative_fuzzy_equals
+      ((this->point(8) - this->point(1))*2, affine_tol))
     return false;
-  if (!this->point(9).relative_fuzzy_equals
-      ((this->point(3) + this->point(2))/2))
+  v = this->point(3) - this->point(2);
+  if (!v.relative_fuzzy_equals
+      ((this->point(9) - this->point(2))*2, affine_tol))
     return false;
   return true;
 }
@@ -543,7 +538,7 @@ const unsigned short int Tet10::_second_order_adjacent_vertices[6][2] =
 
 #ifdef LIBMESH_ENABLE_AMR
 
-const float Tet10::_embedding_matrix[Tet10::num_children][Tet10::num_nodes][Tet10::num_nodes] =
+const Real Tet10::_embedding_matrix[Tet10::num_children][Tet10::num_nodes][Tet10::num_nodes] =
   {
     // embedding matrix for child 0
     {
@@ -668,9 +663,9 @@ const float Tet10::_embedding_matrix[Tet10::num_children][Tet10::num_nodes][Tet1
 
 
 
-float Tet10::embedding_matrix (const unsigned int i,
-                               const unsigned int j,
-                               const unsigned int k) const
+Real Tet10::embedding_matrix (const unsigned int i,
+                              const unsigned int j,
+                              const unsigned int k) const
 {
   // Choose an optimal diagonal, if one has not already been selected
   this->choose_diagonal();
@@ -850,6 +845,7 @@ void Tet10::permute(unsigned int perm_num)
       swap3nodes(0,1,2);
       swap3nodes(4,5,6);
       swap3nodes(7,8,9);
+      swap3neighbors(1,2,3);
     }
 
   switch (side) {
@@ -859,22 +855,31 @@ void Tet10::permute(unsigned int perm_num)
     swap3nodes(0,2,3);
     swap3nodes(4,5,8);
     swap3nodes(6,9,7);
+    swap3neighbors(0,2,1);
     break;
   case 2:
     swap3nodes(2,0,3);
     swap3nodes(5,4,8);
     swap3nodes(6,7,9);
+    swap3neighbors(0,1,2);
     break;
   case 3:
     swap3nodes(2,1,3);
     swap3nodes(5,8,9);
     swap3nodes(6,4,7);
+    swap3neighbors(0,1,3);
     break;
   default:
     libmesh_error();
   }
 }
 
+
+ElemType Tet10::side_type (const unsigned int libmesh_dbg_var(s)) const
+{
+  libmesh_assert_less (s, 4);
+  return TRI6;
+}
 
 
 } // namespace libMesh

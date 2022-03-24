@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -58,6 +58,7 @@
 #include "libmesh/dirichlet_boundaries.h"
 #include "libmesh/string_to_enum.h"
 #include "libmesh/getpot.h"
+#include "libmesh/mesh_refinement.h"
 #include "libmesh/solver_configuration.h"
 #include "libmesh/petsc_linear_solver.h"
 #include "libmesh/petsc_macro.h"
@@ -406,6 +407,16 @@ int main (int argc, char ** argv)
 #endif // LIBMESH_ENABLE_PERIODIC
 
   mesh.read("systems_of_equations_ex9.exo");
+
+  GetPot input(argc, argv);
+  const unsigned int n_refinements = input("n_refinements", 0);
+  // Skip adaptive runs on a non-adaptive libMesh build
+#ifndef LIBMESH_ENABLE_AMR
+  libmesh_example_requires(n_refinements==0, "--enable-amr");
+#else
+  MeshRefinement mesh_refinement(mesh);
+  mesh_refinement.uniformly_refine(n_refinements);
+#endif
 
   // Print information about the mesh to the screen.
   mesh.print_info();

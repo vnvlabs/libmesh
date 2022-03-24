@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -142,6 +142,7 @@ Real FE<2,BERNSTEIN>::shape(const Elem * elem,
       libmesh_assert_less (totalorder, 2);
       libmesh_fallthrough();
     case TRI6:
+    case TRI7:
       switch (totalorder)
         {
         case FIRST:
@@ -364,7 +365,7 @@ Real FE<2,BERNSTEIN>::shape(const Elem * elem,
               default:
                 libmesh_error_msg("Invalid shape function index shape = " << shape);
               } // switch shape
-          } // case TRI6
+          }
         default:
           libmesh_error_msg("Invalid totalorder = " << totalorder);
         } // switch order
@@ -524,37 +525,9 @@ Real FE<2,BERNSTEIN>::shape_deriv(const Elem * elem,
       libmesh_assert_less (totalorder, 2);
       libmesh_fallthrough();
     case TRI6:
+    case TRI7:
       {
-        // I have been lazy here and am using finite differences
-        // to compute the derivatives!
-        const Real eps = 1.e-4;
-
-        switch (j)
-          {
-            //  d()/dxi
-          case 0:
-            {
-              const Point pp(p(0)+eps, p(1));
-              const Point pm(p(0)-eps, p(1));
-
-              return (FE<2,BERNSTEIN>::shape(elem, totalorder, i, pp) -
-                      FE<2,BERNSTEIN>::shape(elem, totalorder, i, pm))/2./eps;
-            }
-
-            // d()/deta
-          case 1:
-            {
-              const Point pp(p(0), p(1)+eps);
-              const Point pm(p(0), p(1)-eps);
-
-              return (FE<2,BERNSTEIN>::shape(elem, totalorder, i, pp) -
-                      FE<2,BERNSTEIN>::shape(elem, totalorder, i, pm))/2./eps;
-            }
-
-
-          default:
-            libmesh_error_msg("Invalid shape function derivative j = " << j);
-          }
+        return fe_fdm_deriv(elem, order, i, j, p, add_p_level, FE<2,BERNSTEIN>::shape);
       }
 
     default:
@@ -689,46 +662,10 @@ Real FE<2,BERNSTEIN>::shape_second_deriv(const Elem * elem,
     case QUAD8:
     case QUADSHELL8:
     case TRI6:
+    case TRI7:
       {
-        // I have been lazy here and am using finite differences
-        // to compute the derivatives!
-        const Real eps = 1.e-4;
-
-        switch (j)
-          {
-            //  d^2() / dxi^2
-          case 0:
-            {
-              const Point pp(p(0)+eps, p(1));
-              const Point pm(p(0)-eps, p(1));
-
-              return (FE<2,BERNSTEIN>::shape_deriv(elem, totalorder, i, 0, pp) -
-                      FE<2,BERNSTEIN>::shape_deriv(elem, totalorder, i, 0, pm))/2./eps;
-            }
-
-            // d^2() / dxi deta
-          case 1:
-            {
-              const Point pp(p(0), p(1)+eps);
-              const Point pm(p(0), p(1)-eps);
-
-              return (FE<2,BERNSTEIN>::shape_deriv(elem, totalorder, i, 0, pp) -
-                      FE<2,BERNSTEIN>::shape_deriv(elem, totalorder, i, 0, pm))/2./eps;
-            }
-
-            // d^2() / deta^2
-          case 2:
-            {
-              const Point pp(p(0), p(1)+eps);
-              const Point pm(p(0), p(1)-eps);
-
-              return (FE<2,BERNSTEIN>::shape_deriv(elem, totalorder, i, 1, pp) -
-                      FE<2,BERNSTEIN>::shape_deriv(elem, totalorder, i, 1, pm))/2./eps;
-            }
-
-          default:
-            libmesh_error_msg("Invalid shape function derivative j = " << j);
-          }
+        return fe_fdm_second_deriv(elem, order, i, j, p, add_p_level,
+                                   FE<2,BERNSTEIN>::shape_deriv);
       }
 
     default:

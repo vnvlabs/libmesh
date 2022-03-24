@@ -8,6 +8,7 @@
 #include <libmesh/equation_systems.h>
 #include <libmesh/fe_base.h>
 #include <libmesh/fe_interface.h>
+#include <libmesh/function_base.h>
 #include <libmesh/mesh.h>
 #include <libmesh/mesh_generation.h>
 #include <libmesh/mesh_modification.h>
@@ -25,9 +26,39 @@
   CPPUNIT_TEST( testGradUComp );                \
   CPPUNIT_TEST( testHessU );                    \
   CPPUNIT_TEST( testHessUComp );                \
-  CPPUNIT_TEST( testDualDoesntScreamAndDie );
+  CPPUNIT_TEST( testDualDoesntScreamAndDie );   \
+  CPPUNIT_TEST( testCustomReinit );
 
 using namespace libMesh;
+
+
+class SkewFunc : public FunctionBase<Real>
+{
+  std::unique_ptr<FunctionBase<Real>> clone () const override
+  { return libmesh_make_unique<SkewFunc>(); }
+
+  Real operator() (const Point & p,
+                     const Real time = 0.) override
+  { libmesh_not_implemented(); } // scalar-only API
+
+  // Skew in x based on y, y based on z
+  void operator() (const Point & p,
+                   const Real time,
+                   DenseVector<Real> & output)
+  {
+    output.resize(3);
+    output(0) = p(0);
+#if LIBMESH_DIM > 0
+    output(0) += .1*p(1);
+    output(1) = p(1);
+#endif
+#if LIBMESH_DIM > 1
+    output(1) += .2*p(2);
+    output(2) = p(2);
+#endif
+  }
+};
+
 
 inline
 Number linear_test (const Point& p,
@@ -185,12 +216,18 @@ Gradient rational_test_grad (const Point& p,
 }
 
 
+#define FE_CAN_TEST_CUBIC \
+  (((family != LAGRANGE && family != L2_LAGRANGE) || \
+    (elem_type != TRI7 && elem_type != TET14)) && order > 2)
+
 
 
 template <Order order, FEFamily family, ElemType elem_type, unsigned int build_nx>
 class FETestBase : public CppUnit::TestCase {
 
 protected:
+  std::string libmesh_suite_name;
+
   unsigned int _dim, _nx, _ny, _nz;
   Elem *_elem;
   std::vector<dof_id_type> _dof_indices;
@@ -238,12 +275,12 @@ public:
                                        0., 1., 0., 1., 0., 1.,
                                        elem_type);
 
-    // Permute our elements randomly and rotate our mesh so we test
-    // all sorts of orientations ... except with Hermite elements,
-    // which are only designed to support meshes with a single
-    // orientation shared by all elements.  We're also not rotating
-    // the rational elements, since our test solution was designed for
-    // a specific weighted mesh.
+    // Permute our elements randomly and rotate and skew our mesh so
+    // we test all sorts of orientations ... except with Hermite
+    // elements, which are only designed to support meshes with a
+    // single orientation shared by all elements.  We're also not
+    // rotating and/or skewing the rational elements, since our test
+    // solution was designed for a specific weighted mesh.
     if (family != HERMITE &&
         family != RATIONAL_BERNSTEIN)
       {
@@ -253,6 +290,9 @@ public:
         if (_dim > 1)
           MeshTools::Modification::rotate(*_mesh, 4,
                                           8*(_dim>2), 16*(_dim>2));
+
+        SkewFunc skew_func;
+        MeshTools::Modification::redistribute(*_mesh, skew_func);
       }
 
     // Set rational weights so we can exactly match our test solution
@@ -289,15 +329,13 @@ public:
     _sys->add_variable("u", order, family);
     _es->init();
 
-    // Clough-Tocher elements still don't work multithreaded
-    if (family == CLOUGH && libMesh::n_threads() > 1)
-      return;
-
     if (family == RATIONAL_BERNSTEIN && order > 1)
       {
         _sys->project_solution(rational_test, rational_test_grad, _es->parameters);
       }
-    else if (order > 2)
+    // Lagrange "cubic" on Tet7 only supports a bubble function, not
+    // all of P^3
+    else if (FE_CAN_TEST_CUBIC)
       {
         _sys->project_solution(fe_cubic_test, fe_cubic_test_grad, _es->parameters);
       }
@@ -330,7 +368,8 @@ public:
 
     // We see 6.5*tol*sqrt(tol) errors on cubic Hermites with the fe_cubic
     // hermite test function
-    this->_grad_tol = 8 * TOLERANCE * sqrt(TOLERANCE);
+    // On Tri7 we see 10*tol*sqrt(tol) errors, even!
+    this->_grad_tol = 12 * TOLERANCE * sqrt(TOLERANCE);
 
     this->_hess_tol = sqrt(TOLERANCE); // FIXME: we see some ~1e-5 errors?!?
 
@@ -346,10 +385,6 @@ public:
 #endif
 
 #if LIBMESH_ENABLE_SECOND_DERIVATIVES
-
-    // Clough-Tocher elements still don't work multithreaded
-    if (family == CLOUGH && libMesh::n_threads() > 1)
-      return;
 
     // Szabab elements don't have second derivatives yet
     if (family == SZABAB)
@@ -389,10 +424,6 @@ public:
   template <typename Functor>
   void testLoop(Functor f)
   {
-    // Clough-Tocher elements still don't work multithreaded
-    if (family == CLOUGH && libMesh::n_threads() > 1)
-      return;
-
     // Handle the "more processors than elements" case
     if (!this->_elem)
       return;
@@ -434,6 +465,8 @@ public:
 
   void testU()
   {
+    LOG_UNIT_TEST;
+
     auto f = [this](Point p, Real x, Real y, Real z)
       {
         Parameters dummy;
@@ -447,7 +480,7 @@ public:
             (libmesh_real(rational_test(p, dummy, "", "")),
              libmesh_real(u),
              this->_value_tol);
-        else if (order > 2)
+        else if (FE_CAN_TEST_CUBIC)
           LIBMESH_ASSERT_FP_EQUAL
             (libmesh_real(fe_cubic_test(p, dummy, "", "")),
              libmesh_real(u),
@@ -470,9 +503,7 @@ public:
 
   void testDualDoesntScreamAndDie()
   {
-    // Clough-Tocher elements still don't work multithreaded
-    if (family == CLOUGH && libMesh::n_threads() > 1)
-      return;
+    LOG_UNIT_TEST;
 
     // Handle the "more processors than elements" case
     if (!this->_elem)
@@ -488,6 +519,8 @@ public:
 
   void testGradU()
   {
+    LOG_UNIT_TEST;
+
     auto f = [this](Point p, Real x, Real y, Real z)
       {
         Parameters dummy;
@@ -513,7 +546,7 @@ public:
                                       libmesh_real(rat_grad(2)),
                                       this->_grad_tol);
           }
-        else if (order > 2)
+        else if (FE_CAN_TEST_CUBIC)
           {
             const Gradient cub_grad =
               fe_cubic_test_grad(p, dummy, "", "");
@@ -563,6 +596,8 @@ public:
 
   void testGradUComp()
   {
+    LOG_UNIT_TEST;
+
     auto f = [this](Point p, Real x, Real y, Real z)
       {
         Parameters dummy;
@@ -596,7 +631,7 @@ public:
                                       libmesh_real(rat_grad(2)),
                                       this->_grad_tol);
           }
-        else if (order > 2)
+        else if (FE_CAN_TEST_CUBIC)
           {
             const Gradient cub_grad =
               fe_cubic_test_grad(p, dummy, "", "");
@@ -647,6 +682,8 @@ public:
 
   void testHessU()
   {
+    LOG_UNIT_TEST;
+
     // Szabab elements don't have second derivatives yet
     if (family == SZABAB)
       return;
@@ -664,7 +701,7 @@ public:
           {
             // TODO: Yeah we'll test the ugly expressions later.
           }
-        else if (order > 2)
+        else if (FE_CAN_TEST_CUBIC)
           {
             const Real & x = p(0);
             const Real & y = LIBMESH_DIM > 1 ? p(1) : 0;
@@ -762,6 +799,8 @@ public:
   void testHessUComp()
   {
 #ifdef LIBMESH_ENABLE_SECOND_DERIVATIVES
+    LOG_UNIT_TEST;
+
     // Szabab elements don't have second derivatives yet
     if (family == SZABAB)
       return;
@@ -790,7 +829,7 @@ public:
           {
             // TODO: tedious calculus
           }
-        else if (order > 2)
+        else if (FE_CAN_TEST_CUBIC)
           {
             const Real & x = p(0);
             const Real & y = LIBMESH_DIM > 1 ? p(1) : 0;
@@ -867,12 +906,45 @@ public:
 #endif // LIBMESH_ENABLE_SECOND_DERIVATIVES
   }
 
+  void testCustomReinit()
+  {
+    LOG_UNIT_TEST;
+
+    std::vector<Point> q_points;
+    std::vector<Real> weights;
+    q_points.resize(3); weights.resize(3);
+    q_points[0](0) = 0.0; q_points[0](1) = 0.0; weights[0] = Real(1)/6;
+    q_points[1](0) = 1.0; q_points[1](1) = 0.0; weights[1] = weights[0];
+    q_points[2](0) = 0.0; q_points[2](1) = 1.0; weights[2] = weights[0];
+
+    FEType fe_type = this->_sys->variable_type(0);
+    std::unique_ptr<FEBase> fe (FEBase::build(this->_dim, fe_type));
+    const int extraorder = 3;
+    std::unique_ptr<QBase> qrule (fe_type.default_quadrature_rule (this->_dim, extraorder));
+    fe->attach_quadrature_rule (qrule.get());
+
+    const std::vector<Point> & q_pos = fe->get_xyz();
+
+    for (const auto & elem : this->_mesh->active_local_element_ptr_range()) {
+      fe->reinit (elem, &q_points, &weights);
+      CPPUNIT_ASSERT_EQUAL(q_points.size(), std::size_t(3));
+      CPPUNIT_ASSERT_EQUAL(q_pos.size(), std::size_t(3));  // 6? bug?
+    }
+  }
+
 };
 
 
 #define INSTANTIATE_FETEST(order, family, elemtype)                     \
   class FETest_##order##_##family##_##elemtype : public FETest<order, family, elemtype> { \
   public:                                                               \
+  FETest_##order##_##family##_##elemtype() :                            \
+    FETest<order,family,elemtype>() {                                   \
+    if (unitlog->summarized_logs_enabled())                             \
+      this->libmesh_suite_name = "FETest";                              \
+    else                                                                \
+      this->libmesh_suite_name = "FETest_" #order "_" #family "_" #elemtype; \
+  }                                                                     \
   CPPUNIT_TEST_SUITE( FETest_##order##_##family##_##elemtype );         \
   FETEST                                                                \
   CPPUNIT_TEST_SUITE_END();                                             \

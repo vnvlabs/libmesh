@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -76,7 +76,7 @@ public:
   /**
    * Destructor.
    */
-  virtual ~FEInterface() {}
+  virtual ~FEInterface() = default;
 
   /**
    * \returns The number of shape functions associated with this
@@ -569,6 +569,19 @@ public:
                           const unsigned int i,
                           const unsigned int j,
                           const Point & p);
+
+  /**
+   * Fills \p dphi with the derivatives of the \f$ i^{th} \f$ shape
+   * function at point \p p in direction \p j.
+   */
+  template<typename OutputType>
+  static void shape_derivs(const FEType & fe_t,
+                           const Elem * elem,
+                           const unsigned int i,
+                           const unsigned int j,
+                           const std::vector<Point> & p,
+                           std::vector<OutputType> & dphi,
+                           const bool add_p_level = true);
 
   /**
    * Typedef for pointer to a function that returns FE shape function derivative values.

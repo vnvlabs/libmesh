@@ -23,6 +23,8 @@ AC_DEFUN([CONFIGURE_PETSC],
     # Let's use a C compiler for the AC_CHECK_HEADER test, although this is
     # not strictly necessary...
     AC_LANG_PUSH(C)
+    saveCFLAGS="$CFLAGS"
+    CFLAGS="$saveCFLAGS $PETSCINCLUDEDIRS"
     AC_CHECK_HEADER(${PETSC_DIR}/${PETSC_ARCH}/include/petscversion.h,
                     [enablepetsc=yes; enablepetsc_mpi=yes
                      petsc_version_h_file=${PETSC_DIR}/${PETSC_ARCH}/include/petscversion.h],
@@ -33,7 +35,7 @@ AC_DEFUN([CONFIGURE_PETSC],
                       [enablepetsc=no; enablepetsc_mpi=no])
                     ])
     AC_LANG_POP
-
+    CFLAGS="$saveCFLAGS"
     dnl We now have a -gt check for this that occurs at the end of the file, so make sure
     dnl it is initialized to some sensible value to avoid syntax errors.
     petsc_have_hypre=0
@@ -57,19 +59,6 @@ AC_DEFUN([CONFIGURE_PETSC],
                     enablepetsc=no; enablepetsc_mpi=no
                     AC_MSG_RESULT([<<< PETSc 2.x detected and "\$PETSC_ARCH" not set.  PETSc disabled. >>>])
                   ])
-
-            dnl We look for petscconf.h in both $PETSC_DIR/include and
-            dnl $PETSC_DIR/$PETSC_ARCH/include, since it can appear in either.
-            petsc_use_debug=`cat ${PETSC_DIR}/include/petscconf.h ${PETSC_DIR}/${PETSC_ARCH}/include/petscconf.h 2>/dev/null | grep -c PETSC_USE_DEBUG`
-            petsc_have_superlu_dist=`cat ${PETSC_DIR}/include/petscconf.h ${PETSC_DIR}/${PETSC_ARCH}/include/petscconf.h 2>/dev/null | grep -c PETSC_HAVE_SUPERLU_DIST`
-            petsc_have_mumps=`cat ${PETSC_DIR}/include/petscconf.h ${PETSC_DIR}/${PETSC_ARCH}/include/petscconf.h 2>/dev/null | grep -c PETSC_HAVE_MUMPS`
-            petsc_have_strumpack=`cat ${PETSC_DIR}/include/petscconf.h ${PETSC_DIR}/${PETSC_ARCH}/include/petscconf.h 2>/dev/null | grep -c PETSC_HAVE_STRUMPACK`
-            petsc_have_metis=`cat ${PETSC_DIR}/include/petscconf.h ${PETSC_DIR}/${PETSC_ARCH}/include/petscconf.h 2>/dev/null | grep -c PETSC_HAVE_METIS`
-            petsc_have_chaco=`cat ${PETSC_DIR}/include/petscconf.h ${PETSC_DIR}/${PETSC_ARCH}/include/petscconf.h 2>/dev/null | grep -c PETSC_HAVE_CHACO`
-            petsc_have_party=`cat ${PETSC_DIR}/include/petscconf.h ${PETSC_DIR}/${PETSC_ARCH}/include/petscconf.h 2>/dev/null | grep -c PETSC_HAVE_PARTY`
-            petsc_have_ptscotch=`cat ${PETSC_DIR}/include/petscconf.h ${PETSC_DIR}/${PETSC_ARCH}/include/petscconf.h 2>/dev/null | grep -c PETSC_HAVE_PTSCOTCH`
-            petsc_have_parmetis=`cat ${PETSC_DIR}/include/petscconf.h ${PETSC_DIR}/${PETSC_ARCH}/include/petscconf.h 2>/dev/null | grep -c PETSC_HAVE_PARMETIS`
-            petsc_have_hypre=`cat ${PETSC_DIR}/include/petscconf.h ${PETSC_DIR}/${PETSC_ARCH}/include/petscconf.h 2>/dev/null | grep -c PETSC_HAVE_HYPRE`
           ],
           [enablepetsc=no; enablepetsc_mpi=no])
 
@@ -185,6 +174,20 @@ AC_DEFUN([CONFIGURE_PETSC],
 
           AC_DEFINE_UNQUOTED(DETECTED_PETSC_VERSION_RELEASE, [$petscrelease],
             [PETSc release (1) or petsc-dev (0), as detected by petsc.m4])
+
+
+          dnl We look for petscconf.h in both $PETSC_DIR/include and
+          dnl $PETSC_DIR/$PETSC_ARCH/include, since it can appear in either.
+          petsc_use_debug=`cat ${PETSC_DIR}/include/petscconf.h ${PETSC_DIR}/${PETSC_ARCH}/include/petscconf.h 2>/dev/null | grep -c PETSC_USE_DEBUG`
+          petsc_have_superlu_dist=`cat ${PETSC_DIR}/include/petscconf.h ${PETSC_DIR}/${PETSC_ARCH}/include/petscconf.h 2>/dev/null | grep -c PETSC_HAVE_SUPERLU_DIST`
+          petsc_have_mumps=`cat ${PETSC_DIR}/include/petscconf.h ${PETSC_DIR}/${PETSC_ARCH}/include/petscconf.h 2>/dev/null | grep -c PETSC_HAVE_MUMPS`
+          petsc_have_strumpack=`cat ${PETSC_DIR}/include/petscconf.h ${PETSC_DIR}/${PETSC_ARCH}/include/petscconf.h 2>/dev/null | grep -c PETSC_HAVE_STRUMPACK`
+          petsc_have_metis=`cat ${PETSC_DIR}/include/petscconf.h ${PETSC_DIR}/${PETSC_ARCH}/include/petscconf.h 2>/dev/null | grep -c PETSC_HAVE_METIS`
+          petsc_have_chaco=`cat ${PETSC_DIR}/include/petscconf.h ${PETSC_DIR}/${PETSC_ARCH}/include/petscconf.h 2>/dev/null | grep -c PETSC_HAVE_CHACO`
+          petsc_have_party=`cat ${PETSC_DIR}/include/petscconf.h ${PETSC_DIR}/${PETSC_ARCH}/include/petscconf.h 2>/dev/null | grep -c PETSC_HAVE_PARTY`
+          petsc_have_ptscotch=`cat ${PETSC_DIR}/include/petscconf.h ${PETSC_DIR}/${PETSC_ARCH}/include/petscconf.h 2>/dev/null | grep -c PETSC_HAVE_PTSCOTCH`
+          petsc_have_parmetis=`cat ${PETSC_DIR}/include/petscconf.h ${PETSC_DIR}/${PETSC_ARCH}/include/petscconf.h 2>/dev/null | grep -c PETSC_HAVE_PARMETIS`
+          petsc_have_hypre=`cat ${PETSC_DIR}/include/petscconf.h ${PETSC_DIR}/${PETSC_ARCH}/include/petscconf.h 2>/dev/null | grep -c PETSC_HAVE_HYPRE`
 
           # Set a #define if PETSc was built with debugging enabled.  Note
           # that this token will appear as LIBMESH_PETSC_USE_DEBUG in our

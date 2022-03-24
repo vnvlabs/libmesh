@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -184,9 +184,10 @@ public:
   static const unsigned int edge_nodes_map[num_edges][nodes_per_edge];
 
   /**
-   * This maps each edge to the sides that contain said edge.
+   * An Optimized numerical quadrature approach for computing the
+   * centroid of the Prism6.
    */
-  static const unsigned int edge_sides_map[num_edges][2];
+  virtual Point true_centroid () const override;
 
   /**
    * Specialized function for computing the element volume.
@@ -199,6 +200,8 @@ public:
   virtual BoundingBox loose_bounding_box () const override;
 
   virtual void permute(unsigned int perm_num) override final;
+
+  ElemType side_type (const unsigned int s) const override final;
 
 protected:
 
@@ -214,16 +217,16 @@ protected:
   /**
    * Matrix used to create the elements children.
    */
-  virtual float embedding_matrix (const unsigned int i,
-                                  const unsigned int j,
-                                  const unsigned int k) const override
+  virtual Real embedding_matrix (const unsigned int i,
+                                 const unsigned int j,
+                                 const unsigned int k) const override
   { return _embedding_matrix[i][j][k]; }
 
   /**
    * Matrix that computes new nodal locations/solution values
    * from current nodes/solution.
    */
-  static const float _embedding_matrix[num_children][num_nodes][num_nodes];
+  static const Real _embedding_matrix[num_children][num_nodes][num_nodes];
 
   LIBMESH_ENABLE_TOPOLOGY_CACHES;
 

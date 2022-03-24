@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -34,15 +34,41 @@
 #include "libmesh/parallel.h"
 #include "libmesh/utility.h"
 #include "libmesh/auto_ptr.h" // libmesh_make_unique
+#include "libmesh/dyna_io.h"  // ElementDefinition for BEX
 
 // TIMPI includes
 #include "timpi/parallel_sync.h"
 
 // C++ includes
-#include <fstream>
+#include <cmath>   // llround
 #include <cstring>
-#include <sstream>
+#include <fstream>
 #include <map>
+#include <sstream>
+
+#ifdef LIBMESH_HAVE_EXODUS_API
+namespace
+{
+  using namespace libMesh;
+
+  const std::vector<Real> & bex_constraint_vec(std::size_t i,
+                                               const ExodusII_IO_Helper & helper)
+  {
+    std::size_t vec_offset = 0;
+    for (auto block_num : index_range(helper.bex_dense_constraint_vecs))
+    {
+      const auto & vecblock = helper.bex_dense_constraint_vecs[block_num];
+      libmesh_assert_greater_equal(i, vec_offset);
+      if (i - vec_offset < vecblock.size())
+        return vecblock[i - vec_offset];
+
+      vec_offset += vecblock.size();
+    }
+
+    libmesh_error_msg("Requested BEX coefficient vector " << i << " not found");
+  }
+}
+#endif
 
 namespace libMesh
 {
@@ -71,6 +97,19 @@ ExodusII_IO::ExodusII_IO (MeshBase & mesh,
   _write_complex_abs(true)
 {
 }
+
+
+
+int ExodusII_IO::get_exodus_version()
+{
+#ifdef LIBMESH_HAVE_EXODUS_API
+  return ExodusII_IO_Helper::get_exodus_version();
+#else
+  return 0;
+#endif
+}
+
+
 
 void ExodusII_IO::set_extra_integer_vars(const std::vector<std::string> & extra_integer_vars)
 {
@@ -176,6 +215,46 @@ void ExodusII_IO::read (const std::string & fname)
   // a node_num_map, the identity map is returned by this call.
   exio_helper->read_node_num_map();
 
+  // Read the element number map from the Exodus file.  This is
+  // required if we want to preserve the numbering of elements as it
+  // exists in the Exodus file.  If the Exodus file does not contain
+  // an elem_num_map, the identity map is returned by this call.
+  //
+  // We now do this before creating nodes, so if we have any spline
+  // nodes that need a NodeElem attached we can give them unused elem
+  // ids.
+  exio_helper->read_elem_num_map();
+
+  // Read any Bezier Extraction coefficient vectors from the file,
+  // such as might occur in an IsoGeometric Analysis (IGA) mesh.
+  exio_helper->read_bex_cv_blocks();
+
+  // If we have Rational Bezier weights, we'll need to
+  // store them.
+  unsigned char weight_index = 0;
+  const bool weights_exist = !exio_helper->w.empty();
+
+  // If we have Bezier extraction coefficients, we'll need to put
+  // NODEELEM elements on spline nodes, since our Rational Bezier
+  // elements will be connected to nodes derived from those; nothing
+  // else will be directly connected to the spline nodes.
+  const bool bex_cv_exist = !exio_helper->bex_dense_constraint_vecs.empty();
+
+  // Even if weights don't exist, we still use RATIONAL_BERNSTEIN for
+  // Bezier-Bernstein BEX elements, we just use 1.0 as the weight on
+  // every node.
+  if (bex_cv_exist)
+    {
+      const Real default_weight = 1.0;
+      weight_index = cast_int<unsigned char>
+        (mesh.add_node_datum<Real>("rational_weight", true,
+                                   &default_weight));
+      mesh.set_default_mapping_type(RATIONAL_BERNSTEIN_MAP);
+      mesh.set_default_mapping_data(weight_index);
+    }
+
+  std::unordered_map<const Node *, Elem *> spline_nodeelem_ptrs;
+
   // Loop over the nodes, create Nodes with local processor_id 0.
   for (int i=0; i<exio_helper->num_nodes; i++)
     {
@@ -193,6 +272,32 @@ void ExodusII_IO::read (const std::string & fname)
                            << " which is different from the (zero-based) Exodus ID "
                            << exodus_id-1
                            << "!");
+
+      // If we have a set of spline weights, these nodes are going to
+      // be used as control points for Bezier elements, and we need
+      // to attach a NodeElem to each to make sure it doesn't get
+      // flagged as an unused node.
+      if (weights_exist)
+        {
+          const auto w = exio_helper->w[i];
+          Point & p = *added_node;
+          p /= w;  // Exodus Bezier Extraction stores spline nodes in projective space
+
+          added_node->set_extra_datum<Real>(weight_index, exio_helper->w[i]);
+        }
+
+      if (bex_cv_exist)
+        {
+          std::unique_ptr<Elem> elem = Elem::build(NODEELEM);
+
+          // Give the NodeElem ids at the end, so we can match any
+          // existing ids in the file for other elements
+          elem->set_id() = exio_helper->end_elem_id() + i;
+
+          elem->set_node(0) = added_node;
+          Elem * added_elem = mesh.add_elem(std::move(elem));
+          spline_nodeelem_ptrs[added_node] = added_elem;
+        }
     }
 
   // This assert is no longer valid if the nodes are not numbered
@@ -202,14 +307,9 @@ void ExodusII_IO::read (const std::string & fname)
   // Get information about all the element and edge blocks
   exio_helper->read_block_info();
 
-  // Reserve space for the elements
-  mesh.reserve_elem(exio_helper->num_elem);
-
-  // Read the element number map from the Exodus file.  This is
-  // required if we want to preserve the numbering of elements as it
-  // exists in the Exodus file.  If the Exodus file does not contain
-  // an elem_num_map, the identity map is returned by this call.
-  exio_helper->read_elem_num_map();
+  // Reserve space for the elements.  Account for any NodeElem that
+  // have already been attached to spline control nodes.
+  mesh.reserve_elem(exio_helper->w.size() + exio_helper->num_elem);
 
   // Read variables for extra integer IDs
   std::vector<std::map<dof_id_type, Real>> elem_ids(extra_ids.size());
@@ -222,12 +322,24 @@ void ExodusII_IO::read (const std::string & fname)
   // Read in the element connectivity for each block.
   int nelem_last_block = 0;
 
+  // If we're building Bezier elements from spline nodes, we need to
+  // calculate those elements' local nodes on the fly, and we'll be
+  // calculating them from constraint matrix columns, and we'll need
+  // to make sure that the same node is found each time it's
+  // calculated from multiple neighboring elements.
+  std::map<std::vector<std::pair<dof_id_type, Real>>, Node *> local_nodes;
+
+  // We'll set any spline NodeElem subdomain_id() values to exceed the
+  // maximum of subdomain_id() values set via Exodus block ids.
+  int max_subdomain_id = std::numeric_limits<int>::min();
+
   // Loop over all the element blocks
   for (int i=0; i<exio_helper->num_elem_blk; i++)
     {
       // Read the information for block i
       exio_helper->read_elem_in_block (i);
-      int subdomain_id = exio_helper->get_block_id(i);
+      const int subdomain_id = exio_helper->get_block_id(i);
+      max_subdomain_id = std::max(max_subdomain_id, subdomain_id);
 
       // populate the map of names
       std::string subdomain_name = exio_helper->get_block_name(i);
@@ -244,11 +356,13 @@ void ExodusII_IO::read (const std::string & fname)
         {
           auto uelem = Elem::build(conv.libmesh_elem_type());
 
+          const int elem_num = j - nelem_last_block;
+
           // Make sure that Exodus's number of nodes per Elem matches
           // the number of Nodes for this type of Elem. We only check
           // this for the first Elem in each block, since these values
           // are the same for every Elem in the block.
-          if (j == nelem_last_block)
+          if (!elem_num)
             libmesh_error_msg_if(exio_helper->num_nodes_per_elem != static_cast<int>(uelem->n_nodes()),
                                  "Error: Exodus file says "
                                  << exio_helper->num_nodes_per_elem
@@ -286,25 +400,181 @@ void ExodusII_IO::read (const std::string & fname)
 
           // Assign extra integer IDs
           for (auto & id : extra_ids)
-            elem->set_extra_integer(id, std::round(elem_ids[id][elem->id()]));
+          {
+            const Real v = elem_ids[id][elem->id()];
+
+            if (v == Real(-1))
+              {
+                elem->set_extra_integer(id, DofObject::invalid_id);
+                continue;
+              }
+
+            const long long iv = std::llround(v);
+
+            // Check if the real number is outside of the range we can
+            // convert exactly
+
+            long long max_representation = 1;
+            max_representation = (max_representation << std::min(std::numeric_limits<Real>::digits,
+                                                                 std::numeric_limits<double>::digits));
+            libmesh_error_msg_if(iv > max_representation,
+                                 "Error! An element integer value higher than "
+                                 << max_representation
+                                 << " was found! Exodus uses real numbers for storing element "
+                                 " integers, which can only represent integers from 0 to "
+                                 << max_representation
+                                 << ".");
+
+            libmesh_error_msg_if(iv < 0,
+                                 "Error! An element integer value less than -1"
+                                 << " was found! Exodus uses real numbers for storing element "
+                                 " integers, which can only represent integers from 0 to "
+                                 << max_representation
+                                 << ".");
+
+
+            elem->set_extra_integer(id, cast_int<dof_id_type>(iv));
+          }
 
           // Set all the nodes for this element
-          for (int k=0; k<exio_helper->num_nodes_per_elem; k++)
+          //
+          // If we don't have any Bezier extraction operators, this
+          // is easy: we've already built all our nodes and just need
+          // to link to them.
+          if (exio_helper->bex_cv_conn.empty())
             {
-              // global index
-              int gi = (j-nelem_last_block)*exio_helper->num_nodes_per_elem + conv.get_node_map(k);
+              for (int k=0; k<exio_helper->num_nodes_per_elem; k++)
+                {
+                  // global index
+                  int gi = (elem_num)*exio_helper->num_nodes_per_elem + conv.get_node_map(k);
 
-              // The entries in 'connect' are actually (1-based)
-              // indices into the node_num_map, so to get the right
-              // node ID we:
-              // 1.) Subtract 1 from connect[gi]
-              // 2.) Pass it through node_num_map to get the corresponding Exodus ID
-              // 3.) Subtract 1 from that, since libmesh node numbering is "zero"-based,
-              //     even when the Exodus node numbering doesn't start with 1.
-              int libmesh_node_id = exio_helper->node_num_map[exio_helper->connect[gi] - 1] - 1;
+                  // The entries in 'connect' are actually (1-based)
+                  // indices into the node_num_map, so to get the right
+                  // node ID we:
+                  // 1.) Subtract 1 from connect[gi]
+                  // 2.) Pass it through node_num_map to get the corresponding Exodus ID
+                  // 3.) Subtract 1 from that, since libmesh node numbering is "zero"-based,
+                  //     even when the Exodus node numbering doesn't start with 1.
+                  int libmesh_node_id = exio_helper->node_num_map[exio_helper->connect[gi] - 1] - 1;
 
-              // Set the node pointer in the Elem
-              elem->set_node(k) = mesh.node_ptr(libmesh_node_id);
+                  // Set the node pointer in the Elem
+                  elem->set_node(k) = mesh.node_ptr(libmesh_node_id);
+                }
+            }
+          else // We have Bezier Extraction data
+            {
+              auto & constraint_rows = mesh.get_constraint_rows();
+
+              const DynaIO::ElementDefinition & dyna_elem_defn =
+                DynaIO::find_elem_definition(elem->type(),
+                                             elem->dim(),
+                                             int(elem->default_order()));
+
+              std::vector<std::vector<Real>>
+                my_constraint_mat(exio_helper->bex_num_elem_cvs);
+              for (auto spline_node_index :
+                   make_range(exio_helper->bex_num_elem_cvs))
+                {
+                  my_constraint_mat[spline_node_index].resize(elem->n_nodes());
+
+                  const auto & my_constraint_rows = exio_helper->bex_cv_conn[elem_num];
+                  const unsigned long elem_coef_vec_index =
+                    my_constraint_rows[spline_node_index] - 1; // Exodus isn't 0-based
+                  const auto & my_vec = bex_constraint_vec(elem_coef_vec_index, *exio_helper);
+                  for (auto elem_node_index :
+                       make_range(elem->n_nodes()))
+                    {
+                      my_constraint_mat[spline_node_index][elem_node_index] =
+                        my_vec[elem_node_index];
+                    }
+
+                }
+
+              for (auto elem_node_index :
+                   make_range(elem->n_nodes()))
+                {
+                  const auto & my_constraint_rows = exio_helper->bex_cv_conn[elem_num];
+
+                  // New finite element node data: dot product of
+                  // constraint matrix columns with spline node data.
+                  // Store that column as a key.
+                  std::vector<std::pair<dof_id_type, Real>> key;
+
+                  for (auto spline_node_index :
+                       make_range(exio_helper->bex_num_elem_cvs))
+                    {
+                      const unsigned long elem_coef_vec_index =
+                        my_constraint_rows[spline_node_index] - 1; // Exodus isn't 0-based
+
+                      auto & coef_vec =
+                        bex_constraint_vec(elem_coef_vec_index, *exio_helper);
+
+                      const Real coef =
+                        libmesh_vector_at(coef_vec, elem_node_index);
+
+                      const int gi = (elem_num)*exio_helper->num_nodes_per_elem +
+                        spline_node_index;
+                      const dof_id_type libmesh_node_id =
+                        exio_helper->node_num_map[exio_helper->connect[gi] - 1] - 1;
+
+                      if (coef != 0) // Ignore irrelevant spline nodes
+                        key.emplace_back(libmesh_node_id, coef);
+                    }
+
+                  auto local_node_it = local_nodes.find(key);
+
+                  if (local_node_it != local_nodes.end())
+                    elem->set_node(dyna_elem_defn.nodes[elem_node_index]) =
+                      local_node_it->second;
+                  else
+                    {
+                      Point p(0);
+                      Real w = 0;
+                      std::vector<std::pair<std::pair<const Elem *, unsigned int>, Real>> constraint_row;
+
+                      for (auto spline_node_index :
+                           make_range(exio_helper->bex_num_elem_cvs))
+                        {
+                          // global => libMesh index, with crazy 1-based data - see comments above
+                          const int gi = (elem_num)*exio_helper->num_nodes_per_elem +
+                            spline_node_index;
+                          const dof_id_type libmesh_node_id =
+                            exio_helper->node_num_map[exio_helper->connect[gi] - 1] - 1;
+
+                          const unsigned long elem_coef_vec_index =
+                            my_constraint_rows[spline_node_index] - 1; // Exodus isn't 0-based
+
+                          const Node & spline_node = mesh.node_ref(libmesh_node_id);
+
+                          auto & coef_vec =
+                            bex_constraint_vec(elem_coef_vec_index, *exio_helper);
+                          const Real coef =
+                            libmesh_vector_at(coef_vec, elem_node_index);
+
+                          // We don't need to store 0 entries;
+                          // constraint_rows is a sparse structure.
+                          if (coef)
+                            {
+                              p.add_scaled(spline_node, coef);
+                              const Real spline_w = weights_exist ?
+                                spline_node.get_extra_datum<Real>(weight_index) : 1;
+                              w += coef * spline_w;
+
+                              const Elem * nodeelem =
+                                libmesh_map_find(spline_nodeelem_ptrs, &spline_node);
+                              constraint_row.emplace_back(std::make_pair(nodeelem, 0), coef);
+                            }
+                        }
+
+                      Node *n = mesh.add_point(p);
+                      if (weights_exist)
+                        n->set_extra_datum<Real>(weight_index, w);
+                      local_nodes[key] = n;
+                      elem->set_node(dyna_elem_defn.nodes[elem_node_index]) = n;
+
+                      constraint_rows[n] = constraint_row;
+                    }
+                }
             }
         }
 
@@ -312,6 +582,11 @@ void ExodusII_IO::read (const std::string & fname)
       // (should equal total number of elements in the end)
       nelem_last_block += exio_helper->num_elem_this_blk;
     }
+
+  // Now we know enough to fix any spline NodeElem subdomains
+  max_subdomain_id++;
+  for (auto p : spline_nodeelem_ptrs)
+    p.second->subdomain_id() = max_subdomain_id;
 
   // Read in edge blocks, storing information in the BoundaryInfo object.
   // Edge blocks are treated as BCs.
@@ -668,8 +943,13 @@ void ExodusII_IO::copy_elemental_solution(System & system,
                                           unsigned int timestep)
 {
   const unsigned int var_num = system.variable_number(system_var_name);
-  libmesh_error_msg_if(system.variable_type(var_num) != FEType(CONSTANT, MONOMIAL),
-                       "Error! Trying to copy elemental solution into a variable that is not of CONSTANT MONOMIAL type.");
+  // Assert that variable is an elemental one.
+  //
+  // NOTE: Currently, this reader is capable of reading only individual components of MONOMIAL_VEC
+  //       types, and each must be written out to its own CONSTANT MONOMIAL variable
+  libmesh_error_msg_if((system.variable_type(var_num) != FEType(CONSTANT, MONOMIAL))
+                       && (system.variable_type(var_num) != FEType(CONSTANT, MONOMIAL_VEC)),
+                       "Error! Trying to copy elemental solution into a variable that is not of CONSTANT MONOMIAL nor CONSTANT MONOMIAL_VEC type.");
 
   const MeshBase & mesh = MeshInput<MeshBase>::mesh();
   const DofMap & dof_map = system.get_dof_map();
@@ -785,7 +1065,7 @@ void ExodusII_IO::copy_scalar_solution(System & system,
 #ifdef LIBMESH_HAVE_MPI
   if (this->n_processors() > 1)
   {
-    const Parallel::MessageTag tag(1);
+    const Parallel::MessageTag tag = this->comm().get_unique_tag(1);
     if (this->processor_id() == this->n_processors()-1)
       this->comm().receive(0, values_from_exodus, tag);
     if (this->processor_id() == 0)
@@ -882,10 +1162,13 @@ void ExodusII_IO::write_element_data (const EquationSystems & es)
   // also in the _output_variables vector.
   if (_output_variables.size() > 0)
     {
+      // Create a list of CONSTANT MONOMIAL variable names
       std::vector<std::string> monomials;
-      const FEType type(CONSTANT, MONOMIAL);
+      FEType type(CONSTANT, MONOMIAL);
+      es.build_variable_names(monomials, &type);
 
-      // Create a list of monomial variable names
+      // Now concatenate a list of CONSTANT MONOMIAL_VEC variable names
+      type = FEType(CONSTANT, MONOMIAL_VEC);
       es.build_variable_names(monomials, &type);
 
       // Filter that list against the _output_variables list.  Note: if names is still empty after
@@ -996,6 +1279,16 @@ ExodusII_IO::write_element_data_from_discontinuous_nodal_data
   // Get a subset of all variable names that are CONSTANT,
   // MONOMIALs. We treat those slightly differently since they can
   // truly only have a single value per Elem.
+  //
+  // Should the same apply here for CONSTANT MONOMIAL_VECs? [CW]
+  // That is, get rid of 'const' on 'fe_type' and rerun:
+  //    fe_type = FEType(CONSTANT, MONOMIAL_VEC);
+  //    es.build_variable_names(monomial_var_names, &fe_type);
+  // Then, es.find_variable_numbers() can be used without a type
+  // (since we know for sure they're monomials) like:
+  //    var_nums = es.find_variable_numbers(monomial_var_names)
+  // for which the DOF indices for 'var_nums' have to be resolved
+  // manually like in build_elemental_solution_vector()
   std::vector<std::string> monomial_var_names;
   const FEType fe_type(CONSTANT, MONOMIAL);
   es.build_variable_names(monomial_var_names, &fe_type);
@@ -1132,13 +1425,9 @@ ExodusII_IO::write_element_data_from_discontinuous_nodal_data
   for (auto derived_var_id : index_range(derived_var_names))
     {
       const auto & derived_name = derived_var_names[derived_var_id];
-      const auto & name_and_id =
+      const auto & [orig_name, node_id] =
         libmesh_map_find (derived_name_to_orig_name_and_node_id,
                   derived_name);
-
-      // Convenience variables for the map entry's contents.
-      const std::string & orig_name = name_and_id.first;
-      const unsigned int node_id = name_and_id.second;
 
       // For each subdomain, determine whether the current variable
       // should be active on that subdomain.
@@ -1559,10 +1848,34 @@ read_sideset_data(int timestep,
 
 void
 ExodusII_IO::
+get_sideset_data_indices (std::map<BoundaryInfo::BCTuple, unsigned int> & bc_array_indices)
+
+{
+  libmesh_error_msg_if(!exio_helper->opened_for_reading,
+                       "ERROR, ExodusII file must be opened for reading "
+                       "before calling ExodusII_IO::get_sideset_data_indices()!");
+
+  const MeshBase & mesh = MeshOutput<MeshBase>::mesh();
+  exio_helper->get_sideset_data_indices(mesh, bc_array_indices);
+}
+
+void
+ExodusII_IO::
+get_nodeset_data_indices (std::map<BoundaryInfo::NodeBCTuple, unsigned int> & bc_array_indices)
+{
+  libmesh_error_msg_if(!exio_helper->opened_for_reading,
+                       "ERROR, ExodusII file must be opened for reading "
+                       "before calling ExodusII_IO::get_nodeset_data_indices()!");
+
+  exio_helper->get_nodeset_data_indices(bc_array_indices);
+}
+
+void
+ExodusII_IO::
 write_nodeset_data (int timestep,
                     const std::vector<std::string> & var_names,
-                    std::vector<std::set<boundary_id_type>> & node_boundary_ids,
-                    std::vector<std::map<BoundaryInfo::NodeBCTuple, Real>> & bc_vals)
+                    const std::vector<std::set<boundary_id_type>> & node_boundary_ids,
+                    const std::vector<std::map<BoundaryInfo::NodeBCTuple, Real>> & bc_vals)
 {
   libmesh_error_msg_if(!exio_helper->opened_for_writing,
                        "ERROR, ExodusII file must be opened for writing "
@@ -1702,21 +2015,35 @@ void ExodusII_IO::write_nodal_data_common(std::string fname,
       // it.
       if (_append)
         {
-          exio_helper->open(fname.c_str(), /*read_only=*/false);
-          // If we're appending, it's not valid to call exio_helper->initialize()
-          // or exio_helper->initialize_nodal_variables(), but we do need to set up
-          // certain aspects of the Helper object itself, such as the number of nodes
-          // and elements.  We do that by reading the header...
-          exio_helper->read_and_store_header_info();
+          // We do our writing only from proc 0, to avoid race
+          // conditions with Exodus 8
+          if (!MeshOutput<MeshBase>::mesh().processor_id())
+            {
+              exio_helper->open(fname.c_str(), /*read_only=*/false);
+              // If we're appending, it's not valid to call exio_helper->initialize()
+              // or exio_helper->initialize_nodal_variables(), but we do need to set up
+              // certain aspects of the Helper object itself, such as the number of nodes
+              // and elements.  We do that by reading the header...
+              exio_helper->read_and_store_header_info();
 
-          // ...and reading the block info
-          exio_helper->read_block_info();
+              // ...and reading the block info
+              exio_helper->read_block_info();
+            }
+            // Keep other processors aware of what we've done on root
+          else
+            {
+              exio_helper->opened_for_writing = true;
+              exio_helper->current_filename = fname;
+            }
         }
       else
         {
           exio_helper->create(fname);
 
+          // But some of our write calls are parallel-only, due to
+          // calls to parallel-only getter functions.
           exio_helper->initialize(fname, mesh, !continuous);
+
           exio_helper->write_nodal_coordinates(mesh, !continuous);
           exio_helper->write_elements(mesh, !continuous);
 
@@ -1755,6 +2082,21 @@ const std::vector<std::string> & ExodusII_IO::get_global_var_names()
 {
   exio_helper->read_var_names(ExodusII_IO_Helper::GLOBAL);
   return exio_helper->global_var_names;
+}
+
+const std::vector<int> & ExodusII_IO::get_elem_num_map() const
+{
+  // We could make this function non-const and have it call
+  // exio_helper->read_elem_num_map() before returning a reference...
+  // but the intention is that this will be called some time after a
+  // mesh is read in, in which case it would be doing extra work to
+  // read in the elem_num_map twice.
+  return exio_helper->elem_num_map;
+}
+
+const std::vector<int> & ExodusII_IO::get_node_num_map() const
+{
+  return exio_helper->node_num_map;
 }
 
 ExodusII_IO_Helper & ExodusII_IO::get_exio_helper()

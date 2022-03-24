@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -47,25 +47,15 @@ public:
   typedef std::map<index_t, Val, std::less<index_t>,
                    FastPoolAllocator<std::pair<const index_t, Val>>> maptype;
 
-  Val & operator[] (const index_t & k)
-  {
-    return maptype::operator[](k);
-  }
-  Val operator[] (const index_t & k) const
-  {
-    typename maptype::const_iterator it = this->find(k);
-    return it == this->end().it? Val() : it->second;
-  }
-
   class veclike_iterator
   {
   public:
     veclike_iterator(const typename maptype::iterator & i)
       : it(i) {}
 
-    veclike_iterator(const veclike_iterator & i) = default;
-
     Val & operator*() const { return it->second; }
+
+    index_t index() const { return it->first; }
 
     veclike_iterator & operator++() { ++it; return *this; }
 
@@ -83,6 +73,9 @@ public:
       return it != other.it;
     }
 
+  private:
+    friend class mapvector;
+
     typename maptype::iterator it;
   };
 
@@ -92,13 +85,12 @@ public:
     const_veclike_iterator(const typename maptype::const_iterator & i)
       : it(i) {}
 
-    const_veclike_iterator(const const_veclike_iterator & i)
-      : it(i.it) {}
-
     const_veclike_iterator(const veclike_iterator & i)
       : it(i.it) {}
 
     const Val & operator*() const { return it->second; }
+
+    index_t index() const { return it->first; }
 
     const_veclike_iterator & operator++() { ++it; return *this; }
 
@@ -116,8 +108,68 @@ public:
       return it != other.it;
     }
 
+  private:
+    friend class mapvector;
+
     typename maptype::const_iterator it;
   };
+
+  class const_reverse_veclike_iterator
+  {
+  public:
+    const_reverse_veclike_iterator(const typename maptype::const_reverse_iterator & i)
+      : it(i) {}
+
+    const_reverse_veclike_iterator(const const_veclike_iterator & i)
+      : it(i.it) {}
+
+    const_reverse_veclike_iterator(const veclike_iterator & i)
+      : it(i.it) {}
+
+    const Val & operator*() const { return it->second; }
+
+    const_reverse_veclike_iterator & operator++() { ++it; return *this; }
+
+    const_reverse_veclike_iterator operator++(int) {
+      const_reverse_veclike_iterator i = *this;
+      ++(*this);
+      return i;
+    }
+
+    bool operator==(const const_reverse_veclike_iterator & other) const {
+      return it == other.it;
+    }
+
+    bool operator!=(const const_reverse_veclike_iterator & other) const {
+      return it != other.it;
+    }
+
+  private:
+    friend class mapvector;
+
+    typename maptype::const_reverse_iterator it;
+  };
+
+  veclike_iterator find (const index_t & k)
+  {
+    return veclike_iterator(maptype::find(k));
+  }
+
+  const_veclike_iterator find (const index_t & k) const
+  {
+    return const_veclike_iterator(maptype::find(k));
+  }
+
+  Val & operator[] (const index_t & k)
+  {
+    return maptype::operator[](k);
+  }
+
+  Val operator[] (const index_t & k) const
+  {
+    auto it = this->maptype::find(k);
+    return it == this->end().it? Val() : it->second;
+  }
 
   void erase(index_t i) {
     maptype::erase(i);

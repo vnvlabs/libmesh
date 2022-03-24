@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -24,6 +24,7 @@
 #include "libmesh/face_quad4.h"
 #include "libmesh/enum_io_package.h"
 #include "libmesh/enum_order.h"
+#include "libmesh/cell_hex8.h"
 
 namespace libMesh
 {
@@ -60,19 +61,6 @@ const unsigned int Pyramid5::edge_nodes_map[Pyramid5::num_edges][Pyramid5::nodes
     {2, 4}, // Edge 6
     {3, 4}  // Edge 7
   };
-
-const unsigned int Pyramid5::edge_sides_map[Pyramid5::num_edges][2] =
-  {
-    {0, 4}, // Edge 0
-    {1, 4}, // Edge 1
-    {2, 4}, // Edge 2
-    {3, 4}, // Edge 3
-    {0, 3}, // Edge 4
-    {0, 1}, // Edge 5
-    {1, 2}, // Edge 6
-    {2, 3}  // Edge 7
-  };
-
 
 // ------------------------------------------------------------
 // Pyramid5 class member functions
@@ -210,6 +198,7 @@ std::unique_ptr<Elem> Pyramid5::build_side_ptr (const unsigned int i,
   face->set_interior_parent(this);
 
   face->subdomain_id() = this->subdomain_id();
+  face->set_mapping_type(this->mapping_type());
 #ifdef LIBMESH_ENABLE_AMR
   face->set_p_level(this->p_level());
 #endif
@@ -282,6 +271,19 @@ void Pyramid5::connectivity(const unsigned int libmesh_dbg_var(sc),
 }
 
 
+Point Pyramid5::true_centroid () const
+{
+  // Call Hex8 static helper function, passing 4 copies of the final
+  // vertex point, effectively treating the Pyramid as a degenerate
+  // hexahedron.  In my testing, this still seems to give correct
+  // results.
+  return Hex8::centroid_from_points(
+    point(0), point(1), point(2), point(3),
+    point(4), point(4), point(4), point(4));
+}
+
+
+
 Real Pyramid5::volume () const
 {
   // The pyramid with a bilinear base has volume given by the
@@ -317,7 +319,16 @@ void Pyramid5::permute(unsigned int perm_num)
   for (unsigned int i = 0; i != perm_num; ++i)
     {
       swap4nodes(0,1,2,3);
+      swap4neighbors(0,1,2,3);
     }
+}
+
+ElemType Pyramid5::side_type (const unsigned int s) const
+{
+  libmesh_assert_less (s, 5);
+  if (s < 4)
+    return TRI3;
+  return QUAD4;
 }
 
 

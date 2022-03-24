@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -97,7 +97,7 @@ InfQuad6::nodes_on_edge(const unsigned int e) const
 
 #ifdef LIBMESH_ENABLE_AMR
 
-const float InfQuad6::_embedding_matrix[InfQuad6::num_children][InfQuad6::num_nodes][InfQuad6::num_nodes] =
+const Real InfQuad6::_embedding_matrix[InfQuad6::num_children][InfQuad6::num_nodes][InfQuad6::num_nodes] =
   {
     // embedding matrix for child 0
     {
@@ -233,6 +233,7 @@ std::unique_ptr<Elem> InfQuad6::build_side_ptr (const unsigned int i,
   edge->set_interior_parent(this);
 
   edge->subdomain_id() = this->subdomain_id();
+  edge->set_mapping_type(this->mapping_type());
 #ifdef LIBMESH_ENABLE_AMR
   edge->set_p_level(this->p_level());
 #endif
@@ -278,6 +279,7 @@ void InfQuad6::build_side_ptr (std::unique_ptr<Elem> & side,
     }
 
   side->subdomain_id() = this->subdomain_id();
+  side->set_mapping_type(this->mapping_type());
 #ifdef LIBMESH_ENABLE_AMR
   side->set_p_level(this->p_level());
 #endif
@@ -363,9 +365,18 @@ InfQuad6::second_order_child_vertex (const unsigned int n) const
     (0, 2*n-7);
 }
 
+
+ElemType
+InfQuad6::side_type (const unsigned int s) const
+{
+  libmesh_assert_less (s, 3);
+  if (s == 0)
+    return EDGE3;
+  return INFEDGE2;
+}
+
+
 } // namespace libMesh
-
-
 
 
 #endif // ifdef LIBMESH_ENABLE_INFINITE_ELEMENTS

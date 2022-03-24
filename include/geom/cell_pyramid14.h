@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -242,11 +242,6 @@ public:
   static const unsigned int edge_nodes_map[num_edges][nodes_per_edge];
 
   /**
-   * This maps each edge to the sides that contain said edge.
-   */
-  static const unsigned int edge_sides_map[num_edges][2];
-
-  /**
    * Specialization for computing the volume of a Pyramid14.
    */
   virtual Real volume () const override;
@@ -254,6 +249,8 @@ public:
   virtual void permute(unsigned int perm_num) override final;
 
   unsigned int center_node_on_side(const unsigned short side) const override final;
+
+  ElemType side_type (const unsigned int s) const override final;
 
 protected:
 
@@ -269,9 +266,9 @@ protected:
   /**
    * Matrix used to create the elements children.
    */
-  virtual float embedding_matrix (const unsigned int,
-                                  const unsigned int,
-                                  const unsigned int) const override
+  virtual Real embedding_matrix (const unsigned int,
+                                 const unsigned int,
+                                 const unsigned int) const override
   { libmesh_not_implemented(); return 0.; }
 
   LIBMESH_ENABLE_TOPOLOGY_CACHES;

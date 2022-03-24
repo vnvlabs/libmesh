@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -33,6 +33,7 @@
 
 // TIMPI includes
 #include "timpi/communicator.h"
+#include "timpi/timpi_init.h"
 
 // C/C++ includes
 #include <iostream>
@@ -46,6 +47,7 @@
 #include <omp.h>
 #endif
 
+#include "stdlib.h" // C, not C++ - we need setenv() from POSIX
 #include "signal.h"
 
 
@@ -99,9 +101,6 @@ std::streambuf * out_buf (nullptr);
 std::streambuf * err_buf (nullptr);
 
 std::unique_ptr<libMesh::Threads::task_scheduler_init> task_scheduler;
-#if defined(LIBMESH_HAVE_MPI)
-bool libmesh_initialized_mpi = false;
-#endif
 #if defined(LIBMESH_HAVE_PETSC)
 bool libmesh_initialized_petsc = false;
 #endif
@@ -392,55 +391,18 @@ LibMeshInit::LibMeshInit (int argc, const char * const * argv,
   // Make sure the construction worked
   libmesh_assert(remote_elem);
 
+  const bool using_threads = libMesh::n_threads() > 1;
+  const bool handle_mpi_errors = false; // libMesh does this
+
 #if defined(LIBMESH_HAVE_MPI)
 
   // Allow the user to bypass MPI initialization
   if (!libMesh::on_command_line ("--disable-mpi"))
     {
-      // Check whether the calling program has already initialized
-      // MPI, and avoid duplicate Init/Finalize
-      int flag;
-      timpi_call_mpi(MPI_Initialized (&flag));
-
-      if (!flag)
-        {
-          int mpi_thread_provided;
-          const int mpi_thread_requested = libMesh::n_threads() > 1 ?
-            MPI_THREAD_FUNNELED :
-            MPI_THREAD_SINGLE;
-
-          timpi_call_mpi
-            (MPI_Init_thread (&argc, const_cast<char ***>(&argv),
-                              mpi_thread_requested, &mpi_thread_provided));
-
-          if ((libMesh::n_threads() > 1) &&
-              (mpi_thread_provided < MPI_THREAD_FUNNELED))
-            {
-              libmesh_warning("Warning: MPI failed to guarantee MPI_THREAD_FUNNELED\n"
-                              << "for a threaded run.\n"
-                              << "Be sure your library is funneled-thread-safe..."
-                              << std::endl);
-
-              // Ideally, if an MPI stack tells us it's unsafe for us
-              // to use threads, we shouldn't use threads.
-              // In practice, we've encountered one MPI stack (an
-              // mvapich2 configuration) that returned
-              // MPI_THREAD_SINGLE as a proper warning, two stacks
-              // that handle MPI_THREAD_FUNNELED properly, and two
-              // current stacks plus a couple old stacks that return
-              // MPI_THREAD_SINGLE but support libMesh threaded runs
-              // anyway.
-
-              // libMesh::libMeshPrivateData::_n_threads = 1;
-              // task_scheduler = libmesh_make_unique<Threads::task_scheduler_init>(libMesh::n_threads());
-            }
-          libmesh_initialized_mpi = true;
-        }
-
-      // Duplicate the input communicator for internal use
-      // And get a Parallel::Communicator copy too, to use
-      // as a default for that API
-      this->_comm = new Parallel::Communicator(COMM_WORLD_IN);
+      this->_timpi_init =
+        new TIMPI::TIMPIInit(argc, argv, using_threads,
+                             handle_mpi_errors, COMM_WORLD_IN);
+      _comm = new Parallel::Communicator(this->_timpi_init->comm().get());
 
       libMesh::GLOBAL_COMM_WORLD = COMM_WORLD_IN;
 
@@ -476,7 +438,10 @@ LibMeshInit::LibMeshInit (int argc, const char * const * argv,
 
 #else
   libmesh_ignore(COMM_WORLD_IN);
-  this->_comm = new Parallel::Communicator(); // So comm() doesn't dereference null
+  this->_timpi_init =
+    new TIMPI::TIMPIInit(argc, argv, using_threads,
+                         handle_mpi_errors);
+  _comm = new Parallel::Communicator(this->_timpi_init->comm().get());
 #endif
 
 #if defined(LIBMESH_HAVE_PETSC)
@@ -652,6 +617,22 @@ LibMeshInit::LibMeshInit (int argc, const char * const * argv,
   if (libMesh::on_command_line("--enable-segv"))
     libMesh::enableSEGV(true);
 
+#ifdef LIBMESH_HAVE_HDF5
+  // We may be running with ExodusII configured not to use HDF5 (in
+  // which case user code which wants to lock files has to do flock()
+  // itself) or with ExodusII configured to use HDF5 (which will
+  // helpfully try to get an exclusive flock() itself, and then scream
+  // and die if user code has already locked the file.  To get
+  // consistent behavior, we need to disable file locking.  The only
+  // reliable way I can see to do this is via an HDF5 environment
+  // variable.
+  //
+  // If the user set this environment variable then we'll trust that
+  // they know what they're doing.  If not then we'll set FALSE,
+  // because that's a better default for us than the unset default.
+  setenv("HDF5_USE_FILE_LOCKING", "FALSE", /*overwrite=false*/0);
+#endif // LIBMESH_HAVE_HDF5
+
   // The library is now ready for use
   libMeshPrivateData::_is_initialized = true;
 
@@ -779,31 +760,16 @@ LibMeshInit::~LibMeshInit()
   _vtk_mpi_controller->Delete();
 #endif
 
+  delete this->_comm;
+
 #if defined(LIBMESH_HAVE_MPI)
   // Allow the user to bypass MPI finalization
   if (!libMesh::on_command_line ("--disable-mpi"))
     {
-      this->comm().clear();
-      delete this->_comm;
-
-      if (libmesh_initialized_mpi)
-        {
-          // We can't just libmesh_assert here because destructor,
-          // but we ought to report any errors
-          unsigned int error_code = MPI_Finalize();
-          if (error_code != MPI_SUCCESS)
-            {
-              char error_string[MPI_MAX_ERROR_STRING+1];
-              int error_string_len;
-              MPI_Error_string(error_code, error_string,
-                               &error_string_len);
-              std::cerr << "Failure from MPI_Finalize():\n"
-                        << error_string << std::endl;
-            }
-        }
+      delete this->_timpi_init;
     }
 #else
-  delete this->_comm;
+  delete this->_timpi_init;
 #endif
 }
 
@@ -1047,54 +1013,54 @@ SolverPackage default_solver_package ()
 
 
 //-------------------------------------------------------------------------------
-template unsigned char  command_line_value<unsigned char>  (const std::string &, unsigned char);
-template unsigned short command_line_value<unsigned short> (const std::string &, unsigned short);
-template unsigned int   command_line_value<unsigned int>   (const std::string &, unsigned int);
-template char           command_line_value<char>           (const std::string &, char);
-template short          command_line_value<short>          (const std::string &, short);
-template int            command_line_value<int>            (const std::string &, int);
-template float          command_line_value<float>          (const std::string &, float);
-template double         command_line_value<double>         (const std::string &, double);
-template long double    command_line_value<long double>    (const std::string &, long double);
-template std::string    command_line_value<std::string>    (const std::string &, std::string);
+template LIBMESH_EXPORT unsigned char  command_line_value<unsigned char>  (const std::string &, unsigned char);
+template LIBMESH_EXPORT unsigned short command_line_value<unsigned short> (const std::string &, unsigned short);
+template LIBMESH_EXPORT unsigned int   command_line_value<unsigned int>   (const std::string &, unsigned int);
+template LIBMESH_EXPORT char           command_line_value<char>           (const std::string &, char);
+template LIBMESH_EXPORT short          command_line_value<short>          (const std::string &, short);
+template LIBMESH_EXPORT int            command_line_value<int>            (const std::string &, int);
+template LIBMESH_EXPORT float          command_line_value<float>          (const std::string &, float);
+template LIBMESH_EXPORT double         command_line_value<double>         (const std::string &, double);
+template LIBMESH_EXPORT long double    command_line_value<long double>    (const std::string &, long double);
+template LIBMESH_EXPORT std::string    command_line_value<std::string>    (const std::string &, std::string);
 
-template unsigned char  command_line_value<unsigned char>  (const std::vector<std::string> &, unsigned char);
-template unsigned short command_line_value<unsigned short> (const std::vector<std::string> &, unsigned short);
-template unsigned int   command_line_value<unsigned int>   (const std::vector<std::string> &, unsigned int);
-template char           command_line_value<char>           (const std::vector<std::string> &, char);
-template short          command_line_value<short>          (const std::vector<std::string> &, short);
-template int            command_line_value<int>            (const std::vector<std::string> &, int);
-template float          command_line_value<float>          (const std::vector<std::string> &, float);
-template double         command_line_value<double>         (const std::vector<std::string> &, double);
-template long double    command_line_value<long double>    (const std::vector<std::string> &, long double);
-template std::string    command_line_value<std::string>    (const std::vector<std::string> &, std::string);
+template LIBMESH_EXPORT unsigned char  command_line_value<unsigned char>  (const std::vector<std::string> &, unsigned char);
+template LIBMESH_EXPORT unsigned short command_line_value<unsigned short> (const std::vector<std::string> &, unsigned short);
+template LIBMESH_EXPORT unsigned int   command_line_value<unsigned int>   (const std::vector<std::string> &, unsigned int);
+template LIBMESH_EXPORT char           command_line_value<char>           (const std::vector<std::string> &, char);
+template LIBMESH_EXPORT short          command_line_value<short>          (const std::vector<std::string> &, short);
+template LIBMESH_EXPORT int            command_line_value<int>            (const std::vector<std::string> &, int);
+template LIBMESH_EXPORT float          command_line_value<float>          (const std::vector<std::string> &, float);
+template LIBMESH_EXPORT double         command_line_value<double>         (const std::vector<std::string> &, double);
+template LIBMESH_EXPORT long double    command_line_value<long double>    (const std::vector<std::string> &, long double);
+template LIBMESH_EXPORT std::string    command_line_value<std::string>    (const std::vector<std::string> &, std::string);
 
-template unsigned char  command_line_next<unsigned char>   (std::string, unsigned char);
-template unsigned short command_line_next<unsigned short>  (std::string, unsigned short);
-template unsigned int   command_line_next<unsigned int>    (std::string, unsigned int);
-template char           command_line_next<char>            (std::string, char);
-template short          command_line_next<short>           (std::string, short);
-template int            command_line_next<int>             (std::string, int);
-template float          command_line_next<float>           (std::string, float);
-template double         command_line_next<double>          (std::string, double);
-template long double    command_line_next<long double>     (std::string, long double);
-template std::string    command_line_next<std::string>     (std::string, std::string);
+template LIBMESH_EXPORT unsigned char  command_line_next<unsigned char>   (std::string, unsigned char);
+template LIBMESH_EXPORT unsigned short command_line_next<unsigned short>  (std::string, unsigned short);
+template LIBMESH_EXPORT unsigned int   command_line_next<unsigned int>    (std::string, unsigned int);
+template LIBMESH_EXPORT char           command_line_next<char>            (std::string, char);
+template LIBMESH_EXPORT short          command_line_next<short>           (std::string, short);
+template LIBMESH_EXPORT int            command_line_next<int>             (std::string, int);
+template LIBMESH_EXPORT float          command_line_next<float>           (std::string, float);
+template LIBMESH_EXPORT double         command_line_next<double>          (std::string, double);
+template LIBMESH_EXPORT long double    command_line_next<long double>     (std::string, long double);
+template LIBMESH_EXPORT std::string    command_line_next<std::string>     (std::string, std::string);
 
-template void           command_line_vector<unsigned char> (const std::string &, std::vector<unsigned char> &);
-template void           command_line_vector<unsigned short>(const std::string &, std::vector<unsigned short> &);
-template void           command_line_vector<unsigned int>  (const std::string &, std::vector<unsigned int> &);
-template void           command_line_vector<char>          (const std::string &, std::vector<char> &);
-template void           command_line_vector<short>         (const std::string &, std::vector<short> &);
-template void           command_line_vector<int>           (const std::string &, std::vector<int> &);
-template void           command_line_vector<float>         (const std::string &, std::vector<float> &);
-template void           command_line_vector<double>        (const std::string &, std::vector<double> &);
-template void           command_line_vector<long double>   (const std::string &, std::vector<long double> &);
+template LIBMESH_EXPORT void           command_line_vector<unsigned char> (const std::string &, std::vector<unsigned char> &);
+template LIBMESH_EXPORT void           command_line_vector<unsigned short>(const std::string &, std::vector<unsigned short> &);
+template LIBMESH_EXPORT void           command_line_vector<unsigned int>  (const std::string &, std::vector<unsigned int> &);
+template LIBMESH_EXPORT void           command_line_vector<char>          (const std::string &, std::vector<char> &);
+template LIBMESH_EXPORT void           command_line_vector<short>         (const std::string &, std::vector<short> &);
+template LIBMESH_EXPORT void           command_line_vector<int>           (const std::string &, std::vector<int> &);
+template LIBMESH_EXPORT void           command_line_vector<float>         (const std::string &, std::vector<float> &);
+template LIBMESH_EXPORT void           command_line_vector<double>        (const std::string &, std::vector<double> &);
+template LIBMESH_EXPORT void           command_line_vector<long double>   (const std::string &, std::vector<long double> &);
 
 #ifdef LIBMESH_DEFAULT_QUADRUPLE_PRECISION
-template Real           command_line_value<Real>           (const std::string &, Real);
-template Real           command_line_value<Real>           (const std::vector<std::string> &, Real);
-template Real           command_line_next<Real>            (std::string, Real);
-template void           command_line_vector<Real>          (const std::string &, std::vector<Real> &);
+template LIBMESH_EXPORT Real           command_line_value<Real>           (const std::string &, Real);
+template LIBMESH_EXPORT Real           command_line_value<Real>           (const std::vector<std::string> &, Real);
+template LIBMESH_EXPORT Real           command_line_next<Real>            (std::string, Real);
+template LIBMESH_EXPORT void           command_line_vector<Real>          (const std::string &, std::vector<Real> &);
 #endif
 
 } // namespace libMesh

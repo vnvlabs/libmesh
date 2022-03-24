@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -209,6 +209,15 @@ public:
   { libmesh_not_implemented(); return false; }
 
   /**
+   * \returns The "circumcenter of mass" (area-weighted average of
+   * triangulation circumcenters) of the element.
+   *
+   * Trivial in 0D.
+   */
+  virtual Point quasicircumcenter () const override
+  { return this->point(0); }
+
+  /**
    * \returns \p true if the element map is definitely affine within
    * numerical tolerances.
    */
@@ -256,6 +265,12 @@ public:
 
   virtual void permute(unsigned int) override final { libmesh_error(); }
 
+  virtual ElemType side_type (const unsigned int) const override
+  {
+    libmesh_not_implemented();
+    return INVALID_ELEM;
+  }
+
 protected:
 
   /**
@@ -274,16 +289,16 @@ protected:
   /**
    * Matrix used to create the elements children.
    */
-  virtual float embedding_matrix (const unsigned int i,
-                                  const unsigned int j,
-                                  const unsigned int k) const override
+  virtual Real embedding_matrix (const unsigned int i,
+                                 const unsigned int j,
+                                 const unsigned int k) const override
   { return _embedding_matrix[i][j][k]; }
 
   /**
    * Matrix that computes new nodal locations/solution values
    * from current nodes/solution.
    */
-  static const float _embedding_matrix[1][1][1];
+  static const Real _embedding_matrix[1][1][1];
 
   /**
    * Matrix that allows children to inherit boundary conditions.

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -345,10 +345,6 @@ void FrequencySystem::solve (const unsigned int n_start,
   const unsigned int maxits =
     es.parameters.get<unsigned int>("linear solver maximum iterations");
 
-
-  //   // return values
-  //   std::vector<std::pair<unsigned int, Real>> vec_rval;
-
   // start solver loop
   for (unsigned int n=n_start; n<= n_stop; n++)
     {
@@ -356,20 +352,13 @@ void FrequencySystem::solve (const unsigned int n_start,
       this->set_current_frequency(n);
 
       // Call the user-supplied pre-solve method
-      START_LOG("user_pre_solve()", "FrequencySystem");
-
-      this->solve_system (es, this->name());
-
-      STOP_LOG("user_pre_solve()", "FrequencySystem");
-
+      LOG_CALL("user_pre_solve()", "FrequencySystem", this->solve_system(es, this->name()));
 
       // Solve the linear system for this specific frequency
       const std::pair<unsigned int, Real> rval =
         linear_solver->solve (*matrix, *solution, *rhs, tol, maxits);
 
-      _n_linear_iterations   = rval.first;
-      _final_linear_residual = rval.second;
-
+      std::tie(_n_linear_iterations, _final_linear_residual) = rval;
       vec_rval.push_back(rval);
 
       /**
@@ -381,8 +370,6 @@ void FrequencySystem::solve (const unsigned int n_start,
 
   // sanity check
   //libmesh_assert_equal_to (vec_rval.size(), (n_stop-n_start+1));
-
-  //return vec_rval;
 }
 
 

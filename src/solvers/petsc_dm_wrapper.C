@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -448,7 +448,7 @@ namespace libMesh
 
   void PetscDMWrapper::init_and_attach_petscdm(System & system, SNES & snes)
   {
-    START_LOG ("init_and_attach_petscdm()", "PetscDMWrapper");
+    LOG_SCOPE ("init_and_attach_petscdm()", "PetscDMWrapper");
 
     PetscErrorCode ierr;
 
@@ -570,13 +570,8 @@ namespace libMesh
         // Uniformly coarsen if not the coarsest grid and distribute dof info.
         if ( level != 1 )
           {
-            START_LOG ("PDM_coarsen", "PetscDMWrapper");
-            mesh_refinement.uniformly_coarsen(1);
-            STOP_LOG  ("PDM_coarsen", "PetscDMWrapper");
-
-            START_LOG ("PDM_dist_dof", "PetscDMWrapper");
-            system.get_dof_map().distribute_dofs(mesh);
-            STOP_LOG  ("PDM_dist_dof", "PetscDMWrapper");
+            LOG_CALL("PDM_coarsen", "PetscDMWrapper", mesh_refinement.uniformly_coarsen(1));
+            LOG_CALL("PDM_dist_dof", "PetscDMWrapper", system.get_dof_map().distribute_dofs(mesh));
           }
       } // End PETSc data structure creation
 
@@ -645,17 +640,9 @@ namespace libMesh
             _ctx_vec[0].dof_vec[v] = di;
           }
 
-        START_LOG ("PDM_refine", "PetscDMWrapper");
-        mesh_refinement.uniformly_refine(1);
-        STOP_LOG  ("PDM_refine", "PetscDMWrapper");
-
-        START_LOG ("PDM_dist_dof", "PetscDMWrapper");
-        system.get_dof_map().distribute_dofs(mesh);
-        STOP_LOG  ("PDM_dist_dof", "PetscDMWrapper");
-
-        START_LOG ("PDM_cnstrnts", "PetscDMWrapper");
-        system.reinit_constraints();
-        STOP_LOG ("PDM_cnstrnts", "PetscDMWrapper");
+        LOG_CALL ("PDM_refine", "PetscDMWrapper", mesh_refinement.uniformly_refine(1));
+        LOG_CALL ("PDM_dist_dof", "PetscDMWrapper", system.get_dof_map().distribute_dofs(mesh));
+        LOG_CALL ("PDM_cnstrnts", "PetscDMWrapper", system.reinit_constraints());
       }
 
     // Create the Interpolation Matrices between adjacent mesh levels
@@ -697,9 +684,7 @@ namespace libMesh
             //MatSetOption(_ctx_vec[i-1].K_interp_ptr->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
 
             // Compute the interpolation matrix and set K_interp_ptr
-            START_LOG ("PDM_proj_mat", "PetscDMWrapper");
-            system.projection_matrix(*_ctx_vec[i-1].K_interp_ptr);
-            STOP_LOG  ("PDM_proj_mat", "PetscDMWrapper");
+            LOG_CALL ("PDM_proj_mat", "PetscDMWrapper", system.projection_matrix(*_ctx_vec[i-1].K_interp_ptr));
 
             // Always close matrix that contains altered data
             _ctx_vec[i-1].K_interp_ptr->close();
@@ -708,17 +693,9 @@ namespace libMesh
         // Move to next grid to make next projection
         if ( i != n_levels - 1 )
           {
-            START_LOG ("PDM_refine", "PetscDMWrapper");
-            mesh_refinement.uniformly_refine(1);
-            STOP_LOG  ("PDM_refine", "PetscDMWrapper");
-
-            START_LOG ("PDM_dist_dof", "PetscDMWrapper");
-            system.get_dof_map().distribute_dofs(mesh);
-            STOP_LOG ("PDM_dist_dof", "PetscDMWrapper");
-
-            START_LOG ("PDM_cnstrnts", "PetscDMWrapper");
-            system.reinit_constraints();
-            STOP_LOG  ("PDM_cnstrnts", "PetscDMWrapper");
+            LOG_CALL ("PDM_refine", "PetscDMWrapper", mesh_refinement.uniformly_refine(1));
+            LOG_CALL ("PDM_dist_dof", "PetscDMWrapper", system.get_dof_map().distribute_dofs(mesh));
+            LOG_CALL ("PDM_cnstrnts", "PetscDMWrapper", system.reinit_constraints());
           }
       } // End create transfer operators. System back at the finest grid
 
@@ -726,13 +703,11 @@ namespace libMesh
     DM & dm = this->get_dm(n_levels-1);
     ierr = SNESSetDM(snes, dm);
     CHKERRABORT(system.comm().get(),ierr);
-
-    STOP_LOG ("init_and_attach_petscdm()", "PetscDMWrapper");
   }
 
   void PetscDMWrapper::build_section( const System & system, PetscSection & section )
   {
-    START_LOG ("build_section()", "PetscDMWrapper");
+    LOG_SCOPE ("build_section()", "PetscDMWrapper");
 
     PetscErrorCode ierr;
     ierr = PetscSectionCreate(system.comm().get(),&section);
@@ -792,13 +767,11 @@ namespace libMesh
 
     // Sanity checking at least that local_n_dofs match
     libmesh_assert_equal_to(system.n_local_dofs(),this->check_section_n_dofs(section));
-
-    STOP_LOG ("build_section()", "PetscDMWrapper");
   }
 
   void PetscDMWrapper::build_sf( const System & system, PetscSF & star_forest )
   {
-    START_LOG ("build_sf()", "PetscDMWrapper");
+    LOG_SCOPE ("build_sf()", "PetscDMWrapper");
 
     const DofMap & dof_map = system.get_dof_map();
 
@@ -854,8 +827,6 @@ namespace libMesh
                            remote_dofs,
                            PETSC_COPY_VALUES);
     CHKERRABORT(system.comm().get(),ierr);
-
-    STOP_LOG ("build_sf()", "PetscDMWrapper");
   }
 
   void PetscDMWrapper::set_point_range_in_section (const System & system,
@@ -989,11 +960,8 @@ namespace libMesh
     // geometric nodes. So can we loop over the nodes we cached in the node_map and
     // the DoFs for each field for that node. We need to give PETSc the local id
     // we built up in the node map.
-    for (const auto & nmap : node_map )
+    for (const auto [global_node_id, local_node_id] : node_map )
       {
-        const dof_id_type global_node_id = nmap.first;
-        const dof_id_type local_node_id = nmap.second;
-
         libmesh_assert( mesh.query_node_ptr(global_node_id) );
 
         const Node & node = mesh.node_ref(global_node_id);
@@ -1004,11 +972,8 @@ namespace libMesh
     // Some finite element types associate dofs with the element. So now we go through
     // any of those with the Elem as the point we add to the PetscSection with accompanying
     // dofs
-    for (const auto & emap : elem_map )
+    for (const auto [global_elem_id, local_elem_id] : elem_map )
       {
-        const dof_id_type global_elem_id = emap.first;
-        const dof_id_type local_elem_id = emap.second;
-
         libmesh_assert( mesh.query_elem_ptr(global_elem_id) );
 
         const Elem & elem = mesh.elem_ref(global_elem_id);
@@ -1020,11 +985,8 @@ namespace libMesh
     // SCALAR dofs live on the "last" processor, so only work there if there are any
     if (system.processor_id() == (system.n_processors()-1))
       {
-        for (const auto & smap : scalar_map )
+        for (const auto [local_id, scalar_var] : scalar_map )
           {
-            const dof_id_type local_id = smap.first;
-            const unsigned int scalar_var = smap.second;
-
             // The number of SCALAR dofs comes from the variable order
             const int n_dofs = system.variable(scalar_var).type().order.get_order();
 

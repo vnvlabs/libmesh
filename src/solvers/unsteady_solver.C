@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -217,31 +217,17 @@ std::pair<unsigned int, Real> UnsteadySolver::adjoint_solve(const QoISet & qoi_i
 
 void UnsteadySolver::adjoint_advance_timestep ()
 {
-  // All calls to adjoint_advance_timestep are made in the user's
-  // code. This first call is made immediately after the adjoint initial conditions
-  // are set. This is in the user code outside the adjoint time loop.
-  if (!first_adjoint_step)
-    {
-      // The adjoint system has been solved. We need to store the adjoint solution and
-      // load the primal solutions for the next time instance (t - delta_ti).
-      _system.time -= _system.deltat;
-    }
-  else
-    {
-      // The first adjoint step simply saves the given adjoint initial condition
-      // So there is a store, but no solve, no actual timestep, so no need to change system time
-      first_adjoint_step = false;
-    }
+  // Call the store function to store the adjoint we have computed (or
+  // for first_adjoint_step, the adjoint initial condition) in this
+  // time step for the time instance.
+  solution_history->store(true, _system.time);
+
+  _system.time -= _system.deltat;
 
   // Retrieve the primal solution vectors at this new (or for
   // first_adjoint_step, initial) time instance. These provide the
   // data to solve the adjoint problem for the next time instance.
   solution_history->retrieve(true, _system.time);
-
-  // Call the store function to store the adjoint we have computed (or
-  // for first_adjoint_step, the adjoint initial condition) in this
-  // time step for the time instance.
-  solution_history->store(true, _system.time);
 
   // Dont forget to localize the old_nonlinear_solution !
   _system.get_vector("_old_nonlinear_solution").localize
@@ -310,10 +296,12 @@ void UnsteadySolver::integrate_qoi_timestep()
   libmesh_not_implemented();
 }
 
+#ifdef LIBMESH_ENABLE_AMR
 void UnsteadySolver::integrate_adjoint_refinement_error_estimate(AdjointRefinementEstimator & /*adjoint_refinement_error_estimator*/, ErrorVector & /*QoI_elementwise_error*/)
 {
   libmesh_not_implemented();
 }
+#endif // LIBMESH_ENABLE_AMR
 
 Number UnsteadySolver::old_nonlinear_solution(const dof_id_type global_dof_number)
   const

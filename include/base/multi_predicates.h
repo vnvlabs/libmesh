@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -730,6 +730,23 @@ struct Evaluable: abstract_multi_predicate<T>
     this->_predicates.push_back(new not_null<T>);
     this->_predicates.push_back(new active<T>);
     this->_predicates.push_back(new evaluable<T>(dof_map, var_num));
+  }
+};
+
+
+
+/**
+ * Used to iterate over elements where solutions indexed by a given
+ * vector of DofMaps are evaluable for all variables
+ */
+template <typename T>
+struct MultiEvaluable: abstract_multi_predicate<T>
+{
+  MultiEvaluable(const std::vector<const DofMap *> & dof_maps)
+  {
+    this->_predicates.push_back(new not_null<T>);
+    this->_predicates.push_back(new active<T>);
+    this->_predicates.push_back(new multi_evaluable<T>(dof_maps));
   }
 };
 

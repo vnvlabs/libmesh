@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -69,6 +69,8 @@ void RadialBasisInterpolation<KDDim,RBF>::prepare_for_use()
   libmesh_assert_equal_to (this->_src_vals.size(), n_src_pts*this->n_field_variables());
 
   {
+    LOG_SCOPE ("prepare_for_use():bbox", "RadialBasisInterpolation<>");
+
     Point
       &p_min(_src_bbox.min()),
       &p_max(_src_bbox.max());
@@ -112,6 +114,9 @@ void RadialBasisInterpolation<KDDim,RBF>::prepare_for_use()
 
   DynamicMatrix A(n_src_pts, n_src_pts), x(n_src_pts,n_vars), b(n_src_pts,n_vars);
 
+  {
+  LOG_SCOPE ("prepare_for_use():mat", "RadialBasisInterpolation<>");
+
   for (std::size_t i=0; i<n_src_pts; i++)
     {
       const Point & x_i (_src_pts[i]);
@@ -132,11 +137,16 @@ void RadialBasisInterpolation<KDDim,RBF>::prepare_for_use()
       for (unsigned int var=0; var<n_vars; var++)
         b(i,var) = _src_vals[i*n_vars + var];
     }
+  }
 
 
-  // Solve the linear system
-  x = A.ldlt().solve(b);
-  //x = A.fullPivLu().solve(b);
+  {
+    LOG_SCOPE ("prepare_for_use():solve", "RadialBasisInterpolation<>");
+
+    // Solve the linear system
+    x = A.ldlt().solve(b);
+    //x = A.fullPivLu().solve(b);
+  }
 
   // save  the weights for each variable
   _weights.resize (this->_src_vals.size());
@@ -205,9 +215,9 @@ void RadialBasisInterpolation<KDDim,RBF>::interpolate_field_data (const std::vec
 
 // ------------------------------------------------------------
 // Explicit Instantiations
-template class RadialBasisInterpolation<3, WendlandRBF<3,0>>;
-template class RadialBasisInterpolation<3, WendlandRBF<3,2>>;
-template class RadialBasisInterpolation<3, WendlandRBF<3,4>>;
-template class RadialBasisInterpolation<3, WendlandRBF<3,8>>;
+template class LIBMESH_EXPORT RadialBasisInterpolation<3, WendlandRBF<3,0>>;
+template class LIBMESH_EXPORT RadialBasisInterpolation<3, WendlandRBF<3,2>>;
+template class LIBMESH_EXPORT RadialBasisInterpolation<3, WendlandRBF<3,4>>;
+template class LIBMESH_EXPORT RadialBasisInterpolation<3, WendlandRBF<3,8>>;
 
 } // namespace libMesh

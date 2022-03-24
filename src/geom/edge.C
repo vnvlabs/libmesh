@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -61,6 +61,7 @@ void Edge::side_ptr (std::unique_ptr<Elem> & side,
   else
     {
       side->subdomain_id() = this->subdomain_id();
+      side->set_mapping_type(this->mapping_type());
 
       side->set_node(0) = this->node_ptr(i);
     }
@@ -139,6 +140,12 @@ unsigned int Edge::center_node_on_side(const unsigned short side) const
 {
   libmesh_assert_less (side, this->n_sides());
   return side;
+}
+
+ElemType Edge::side_type (const unsigned int libmesh_dbg_var(s)) const
+{
+  libmesh_assert_less (s, 2);
+  return NODEELEM;
 }
 
 } // namespace libMesh

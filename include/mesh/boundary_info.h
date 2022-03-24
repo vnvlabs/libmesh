@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -781,12 +781,12 @@ public:
   /**
    * Prints the boundary information data structure.
    */
-  void print_info (std::ostream & out=libMesh::out) const;
+  void print_info (std::ostream & out_stream=libMesh::out) const;
 
   /**
    * Prints a summary of the boundary information.
    */
-  void print_summary (std::ostream & out=libMesh::out) const;
+  void print_summary (std::ostream & out_stream=libMesh::out) const;
 
   /**
    * \returns A reference for getting an optional name for a sideset.

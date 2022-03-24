@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -622,8 +622,12 @@ void ExactSolution::_compute_error(const std::string & sys_name,
 
 #ifdef LIBMESH_ENABLE_SECOND_DERIVATIVES
       // The value of the shape function second derivatives at the quadrature points
-      const std::vector<std::vector<typename FEGenericBase<OutputShape>::OutputTensor>> &
-        d2phi_values = fe->get_d2phi();
+      // Not computed for vector-valued elements
+      const std::vector<std::vector<typename FEGenericBase<OutputShape>::OutputTensor>> *
+        d2phi_values = nullptr;
+
+      if (FEInterface::field_type(fe_type) != TYPE_VECTOR)
+        d2phi_values = &fe->get_d2phi();
 #endif
 
       // The XYZ locations (in physical space) of the quadrature points
@@ -669,13 +673,16 @@ void ExactSolution::_compute_error(const std::string & sys_name,
               // Values from current solution.
               u_h      += phi_values[i][qp]*computed_system.current_solution  (dof_indices[i]);
               grad_u_h += dphi_values[i][qp]*computed_system.current_solution (dof_indices[i]);
-#ifdef LIBMESH_ENABLE_SECOND_DERIVATIVES
-              grad2_u_h += d2phi_values[i][qp]*computed_system.current_solution (dof_indices[i]);
-#endif
               if (FEInterface::field_type(fe_type) == TYPE_VECTOR)
                 {
                   curl_u_h += (*curl_values)[i][qp]*computed_system.current_solution (dof_indices[i]);
                   div_u_h += (*div_values)[i][qp]*computed_system.current_solution (dof_indices[i]);
+                }
+              else
+                {
+#ifdef LIBMESH_ENABLE_SECOND_DERIVATIVES
+                  grad2_u_h += (*d2phi_values)[i][qp]*computed_system.current_solution (dof_indices[i]);
+#endif
                 }
             }
 
@@ -788,6 +795,10 @@ void ExactSolution::_compute_error(const std::string & sys_name,
                     exact_hess_accessor(d + e*dim + c*dim*dim) =
                       _exact_hessians[sys_num]->
                       component(var_component+c, q_point[qp], time)(d,e);
+
+              // FIXME: operator- is not currently implemented for TypeNTensor
+              const typename FEGenericBase<OutputShape>::OutputNumberTensor grad2_error = grad2_u_h - exact_hess;
+              error_vals[2] += JxW[qp]*grad2_error.norm_sq();
             }
           else if (_equation_systems_fine)
             {
@@ -795,12 +806,11 @@ void ExactSolution::_compute_error(const std::string & sys_name,
               std::vector<Tensor> output(1);
               coarse_values->hessian(q_point[qp],time,output,&subdomain_id);
               exact_hess = output[0];
+
+              // FIXME: operator- is not currently implemented for TypeNTensor
+              const typename FEGenericBase<OutputShape>::OutputNumberTensor grad2_error = grad2_u_h - exact_hess;
+              error_vals[2] += JxW[qp]*grad2_error.norm_sq();
             }
-
-          const typename FEGenericBase<OutputShape>::OutputNumberTensor grad2_error = grad2_u_h - exact_hess;
-
-          // FIXME: PB: Is this what we want for rank 3 tensors?
-          error_vals[2] += JxW[qp]*grad2_error.norm_sq();
 #endif
 
         } // end qp loop
@@ -815,7 +825,7 @@ void ExactSolution::_compute_error(const std::string & sys_name,
 }
 
 // Explicit instantiations of templated member functions
-template void ExactSolution::_compute_error<Real>(const std::string &, const std::string &, std::vector<Real> &);
-template void ExactSolution::_compute_error<RealGradient>(const std::string &, const std::string &, std::vector<Real> &);
+template LIBMESH_EXPORT void ExactSolution::_compute_error<Real>(const std::string &, const std::string &, std::vector<Real> &);
+template LIBMESH_EXPORT void ExactSolution::_compute_error<RealGradient>(const std::string &, const std::string &, std::vector<Real> &);
 
 } // namespace libMesh

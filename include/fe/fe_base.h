@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -558,6 +558,7 @@ protected:
    * Determine which values are to be calculated, for both the FE
    * itself and for the FEMap.
    */
+  virtual_for_inffe
   void determine_calculations();
 
   /**
@@ -589,9 +590,10 @@ protected:
 
   /**
    * Compute the dual basis coefficients \p dual_coeff
-   * the default qrule for element dimension and quadrature order is needed
+   * we rely on the \p JxW (or weights) and the \p phi values,
+   * which can come from default or customized qrule
    */
-  void compute_dual_shape_coeffs(const QBase & default_qrule);
+  void compute_dual_shape_coeffs(const std::vector<Real> & JxW, const std::vector<std::vector<OutputShape>> & phi);
 
   /**
    * Compute \p dual_phi, \p dual_dphi, \p dual_d2phi
@@ -795,7 +797,7 @@ void FEGenericBase<OutputType>::compute_dual_shape_functions ()
 }
 
 template <typename OutputType>
-void FEGenericBase<OutputType>::compute_dual_shape_coeffs (const QBase & /*default_qrule*/)
+void FEGenericBase<OutputType>::compute_dual_shape_coeffs(const std::vector<Real> & /*JxW*/, const std::vector<std::vector<OutputShape>> & /*phi_vals*/)
 {
   libmesh_error_msg(
       "Computation of dual shape functions for vector finite element "
@@ -808,7 +810,7 @@ template <>
 void FEGenericBase<Real>::compute_dual_shape_functions();
 
 template <>
-void FEGenericBase<Real>::compute_dual_shape_coeffs(const QBase & default_qrule);
+void FEGenericBase<Real>::compute_dual_shape_coeffs(const std::vector<Real> & /*JxW*/, const std::vector<std::vector<OutputShape>> & /*phi_vals*/);
 
 
 // Typedefs for convenience and backwards compatibility

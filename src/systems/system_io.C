@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -61,24 +61,6 @@ using libMesh::cast_int;
 // parameter.
 
 const std::size_t max_io_blksize = 256000;
-
-
-/**
- * Comparison object to use with DofObject pointers.  This sorts by id(),
- * so when we iterate over a set of DofObjects we visit the objects in
- * order of increasing ID.
- */
-struct CompareDofObjectsByID
-{
-  bool operator()(const DofObject * a,
-                  const DofObject * b) const
-  {
-    libmesh_assert (a);
-    libmesh_assert (b);
-
-    return a->id() < b->id();
-  }
-};
 
 /**
  *
@@ -2146,7 +2128,8 @@ unsigned int System::write_SCALAR_dofs (const NumericVector<Number> & vec,
 #ifdef LIBMESH_HAVE_MPI
   if (this->n_processors() > 1)
     {
-      const Parallel::MessageTag val_tag(1);
+      const Parallel::MessageTag val_tag =
+        this->comm().get_unique_tag(1);
 
       // Post the receive on processor 0
       if (this->processor_id() == 0)
@@ -2253,12 +2236,12 @@ std::size_t System::read_serialized_vectors (Xdr & io,
       // Get the buffer size
       io.data(vector_length);
 
-      libmesh_assert_equal_to (num_vecs, vectors.size());
+      libmesh_error_msg_if (num_vecs != vectors.size(), "Unexpected value of num_vecs");
 
       if (num_vecs != 0)
         {
-          libmesh_assert_not_equal_to (vectors[0], 0);
-          libmesh_assert_equal_to     (vectors[0]->size(), vector_length);
+          libmesh_error_msg_if (vectors[0] == nullptr, "vectors[0] should not be null");
+          libmesh_error_msg_if (vectors[0]->size() != vector_length, "Inconsistent vector sizes");
         }
     }
 
@@ -2380,15 +2363,15 @@ std::size_t System::write_serialized_vectors (Xdr & io,
 
 
 
-template void System::read_parallel_data<Number> (Xdr & io, const bool read_additional_data);
-template void System::read_serialized_data<Number> (Xdr & io, const bool read_additional_data);
-template numeric_index_type System::read_serialized_vector<Number> (Xdr & io, NumericVector<Number> * vec);
-template std::size_t System::read_serialized_vectors<Number> (Xdr & io, const std::vector<NumericVector<Number> *> & vectors) const;
+template LIBMESH_EXPORT void System::read_parallel_data<Number> (Xdr & io, const bool read_additional_data);
+template LIBMESH_EXPORT void System::read_serialized_data<Number> (Xdr & io, const bool read_additional_data);
+template LIBMESH_EXPORT numeric_index_type System::read_serialized_vector<Number> (Xdr & io, NumericVector<Number> * vec);
+template LIBMESH_EXPORT std::size_t System::read_serialized_vectors<Number> (Xdr & io, const std::vector<NumericVector<Number> *> & vectors) const;
 #ifdef LIBMESH_USE_COMPLEX_NUMBERS
-template void System::read_parallel_data<Real> (Xdr & io, const bool read_additional_data);
-template void System::read_serialized_data<Real> (Xdr & io, const bool read_additional_data);
-template numeric_index_type System::read_serialized_vector<Real> (Xdr & io, NumericVector<Number> * vec);
-template std::size_t System::read_serialized_vectors<Real> (Xdr & io, const std::vector<NumericVector<Number> *> & vectors) const;
+template LIBMESH_EXPORT void System::read_parallel_data<Real> (Xdr & io, const bool read_additional_data);
+template LIBMESH_EXPORT void System::read_serialized_data<Real> (Xdr & io, const bool read_additional_data);
+template LIBMESH_EXPORT numeric_index_type System::read_serialized_vector<Real> (Xdr & io, NumericVector<Number> * vec);
+template LIBMESH_EXPORT std::size_t System::read_serialized_vectors<Real> (Xdr & io, const std::vector<NumericVector<Number> *> & vectors) const;
 #endif
 
 } // namespace libMesh

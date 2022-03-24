@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -104,9 +104,7 @@ XdrIO::XdrIO (const MeshBase & mesh, const bool binary_in) :
 
 
 
-XdrIO::~XdrIO ()
-{
-}
+XdrIO::~XdrIO () = default;
 
 
 
@@ -116,7 +114,7 @@ void XdrIO::write (const std::string & name)
 
   Xdr io ((this->processor_id() == 0) ? name : "", this->binary() ? ENCODE : WRITE);
 
-  START_LOG("write()","XdrIO");
+  LOG_SCOPE("write()","XdrIO");
 
   // convenient reference to our mesh
   const MeshBase & mesh = MeshOutput<MeshBase>::mesh();
@@ -241,8 +239,6 @@ void XdrIO::write (const std::string & name)
       // write the "shell face" boundary condition information
       this->write_serialized_shellface_bcs (io, n_shellface_bcs);
     }
-
-  STOP_LOG("write()","XdrIO");
 
   // pause all processes until the writing ends -- this will
   // protect for the pathological case where a write is

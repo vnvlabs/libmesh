@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -21,7 +21,14 @@
 #define LIBMESH_DISTRIBUTED_MESH_H
 
 // Local Includes
-#include "libmesh/mapvector.h"
+#include "libmesh_config.h"
+
+#if LIBMESH_MAPVECTOR_CHUNK_SIZE == 1
+#  include "libmesh/mapvector.h"
+#else
+#  include "libmesh/chunked_mapvector.h"
+#endif
+
 #include "libmesh/unstructured_mesh.h"
 #include "libmesh/auto_ptr.h" // libmesh_make_unique
 
@@ -50,6 +57,13 @@ class Node;
 class DistributedMesh : public UnstructuredMesh
 {
 public:
+
+  template <typename Obj>
+#if LIBMESH_MAPVECTOR_CHUNK_SIZE == 1
+  using dofobject_container = mapvector<Obj *, dof_id_type>;
+#else
+  using dofobject_container = chunked_mapvector<Obj *, dof_id_type, LIBMESH_MAPVECTOR_CHUNK_SIZE>;
+#endif
 
   /**
    * Constructor.  Takes \p dim, the dimension of the mesh.
@@ -110,6 +124,11 @@ public:
   virtual void clear() override;
 
   /**
+   * Clear internal Elem data.
+   */
+  virtual void clear_elems() override;
+
+  /**
    * Redistribute elements between processors.  This gets called
    * automatically by the Partitioner, and is a no-op in the case of a
    * serialized mesh.
@@ -157,7 +176,7 @@ public:
    * Calls libmesh_assert() on each possible failure in that container.
    */
   template <typename T>
-  void libmesh_assert_valid_parallel_object_ids(const mapvector<T *,dof_id_type> &) const;
+  void libmesh_assert_valid_parallel_object_ids(const dofobject_container<T> &) const;
 
   /**
    * Verify id and processor_id consistency of our elements and
@@ -185,7 +204,7 @@ public:
    * \returns The smallest globally unused id for that container.
    */
   template <typename T>
-  dof_id_type renumber_dof_objects (mapvector<T *,dof_id_type> &);
+  dof_id_type renumber_dof_objects (dofobject_container<T> &);
 
   /**
    * Remove nullptr elements from arrays.
@@ -499,6 +518,18 @@ public:
   evaluable_elements_end (const DofMap & dof_map,
                           unsigned int var_num = libMesh::invalid_uint) const override;
 
+  virtual element_iterator
+  multi_evaluable_elements_begin (std::vector<const DofMap *> dof_maps) override;
+
+  virtual element_iterator
+  multi_evaluable_elements_end (std::vector<const DofMap *> dof_maps) override;
+
+  virtual const_element_iterator
+  multi_evaluable_elements_begin (std::vector<const DofMap *> dof_maps) const override;
+
+  virtual const_element_iterator
+  multi_evaluable_elements_end (std::vector<const DofMap *> dof_maps) const override;
+
 #ifdef LIBMESH_ENABLE_AMR
   virtual element_iterator flagged_elements_begin (unsigned char rflag) override;
   virtual element_iterator flagged_elements_end (unsigned char rflag) override;
@@ -565,6 +596,14 @@ public:
   evaluable_nodes_end (const DofMap & dof_map,
                        unsigned int var_num = libMesh::invalid_uint) const override;
 
+  virtual node_iterator
+  multi_evaluable_nodes_begin (std::vector<const DofMap *> dof_maps) override;
+  virtual node_iterator
+  multi_evaluable_nodes_end (std::vector<const DofMap *> dof_maps) override;
+  virtual const_node_iterator
+  multi_evaluable_nodes_begin (std::vector<const DofMap *> dof_maps) const override;
+  virtual const_node_iterator
+  multi_evaluable_nodes_end (std::vector<const DofMap *> dof_maps) const override;
 
 protected:
 
@@ -576,12 +615,12 @@ protected:
   /**
    * The vertices (spatial coordinates) of the mesh.
    */
-  mapvector<Node *, dof_id_type> _nodes;
+  dofobject_container<Node> _nodes;
 
   /**
    * The elements in the mesh.
    */
-  mapvector<Elem *, dof_id_type> _elements;
+  dofobject_container<Elem> _elements;
 
   /**
    * A boolean remembering whether we're serialized or not
@@ -623,18 +662,16 @@ protected:
 private:
 
   /**
-   * Typedefs for the container implementation.  In this case,
-   * it's just a std::vector<Elem *>.
+   * Typedefs for the container implementation.
    */
-  typedef mapvector<Elem *, dof_id_type>::veclike_iterator             elem_iterator_imp;
-  typedef mapvector<Elem *, dof_id_type>::const_veclike_iterator const_elem_iterator_imp;
+  typedef dofobject_container<Elem>::veclike_iterator             elem_iterator_imp;
+  typedef dofobject_container<Elem>::const_veclike_iterator const_elem_iterator_imp;
 
   /**
-   * Typedefs for the container implementation.  In this case,
-   * it's just a std::vector<Node *>.
+   * Typedefs for the container implementation.
    */
-  typedef mapvector<Node *, dof_id_type>::veclike_iterator             node_iterator_imp;
-  typedef mapvector<Node *, dof_id_type>::const_veclike_iterator const_node_iterator_imp;
+  typedef dofobject_container<Node>::veclike_iterator             node_iterator_imp;
+  typedef dofobject_container<Node>::const_veclike_iterator const_node_iterator_imp;
 };
 
 

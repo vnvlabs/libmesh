@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -151,7 +151,7 @@ void build_delaunay_square(UnstructuredMesh & mesh,
 class QueryElemSubdomainIDBase
 {
 public:
-  virtual ~QueryElemSubdomainIDBase() {}
+  virtual ~QueryElemSubdomainIDBase() = default;
 
   virtual subdomain_id_type get_subdomain_for_layer(const Elem * old_elem, unsigned int layer) = 0;
 };

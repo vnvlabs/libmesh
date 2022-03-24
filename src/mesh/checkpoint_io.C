@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -39,7 +39,6 @@
 #include <iostream>
 #include <iomanip>
 #include <cstdio>
-#include <unistd.h>
 #include <vector>
 #include <string>
 #include <cstring>
@@ -47,6 +46,12 @@
 #include <sstream> // for ostringstream
 #include <unordered_map>
 #include <unordered_set>
+#ifdef LIBMESH_HAVE_DIRECT_H
+#include <direct.h> // rmdir() on Windows
+#endif
+#ifdef LIBMESH_HAVE_UNISTD_H
+#include <unistd.h>  // rmdir() on Unix
+#endif
 
 namespace
 {
@@ -178,9 +183,7 @@ CheckpointIO::CheckpointIO (const MeshBase & mesh, const bool binary_in) :
 {
 }
 
-CheckpointIO::~CheckpointIO ()
-{
-}
+CheckpointIO::~CheckpointIO () = default;
 
 processor_id_type CheckpointIO::select_split_config(const std::string & input_name, header_id_type & data_size)
 {
@@ -372,8 +375,13 @@ void CheckpointIO::write (const std::string & name)
   std::vector<processor_id_type> ids_to_write;
 
   // We're going to sort elements by pid in one pass, to avoid sending
-  // predicated iterators through the whole mesh N_p times
-  std::unordered_map<processor_id_type, std::vector<Elem *>> elements_on_pid;
+  // predicated iterators through the whole mesh N_p times.
+  //
+  // The data type here needs to be a non-const-pointer to whatever
+  // our element_iterator is a const-pointer to, for compatibility
+  // later.
+  typedef std::remove_const<MeshBase::const_element_iterator::value_type>::type nc_v_t;
+  std::unordered_map<processor_id_type, std::vector<nc_v_t>> elements_on_pid;
 
   if (_parallel)
     {
@@ -441,19 +449,24 @@ void CheckpointIO::write (const std::string & name)
               const auto elements_vec_it = elements_on_pid.find(p);
               if (elements_vec_it != elements_on_pid.end())
                 {
-                  const auto & p_elements = elements_vec_it->second;
-                  Elem * const * elempp = p_elements.data();
-                  Elem * const * elemend = elempp + p_elements.size();
+                  auto & p_elements = elements_vec_it->second;
+
+                  // Be compatible with both deprecated and
+                  // corrected MeshBase iterator types
+                  typedef MeshBase::const_element_iterator::value_type v_t;
+
+                  v_t * elempp = p_elements.data();
+                  v_t * elemend = elempp + p_elements.size();
 
                   const MeshBase::const_element_iterator
                     pid_elements_begin = MeshBase::const_element_iterator
-                      (elempp, elemend, Predicates::NotNull<Elem * const *>()),
+                      (elempp, elemend, Predicates::NotNull<v_t *>()),
                     pid_elements_end = MeshBase::const_element_iterator
-                      (elemend, elemend, Predicates::NotNull<Elem * const *>()),
+                      (elemend, elemend, Predicates::NotNull<v_t *>()),
                     active_pid_elements_begin = MeshBase::const_element_iterator
-                      (elempp, elemend, Predicates::Active<Elem * const *>()),
+                      (elempp, elemend, Predicates::Active<v_t *>()),
                     active_pid_elements_end = MeshBase::const_element_iterator
-                      (elemend, elemend, Predicates::Active<Elem * const *>());
+                      (elemend, elemend, Predicates::Active<v_t *>());
 
                   query_ghosting_functors
                     (mesh, p, active_pid_elements_begin,

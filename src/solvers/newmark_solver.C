@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -32,8 +32,7 @@ NewmarkSolver::NewmarkSolver (sys_type & s)
     _initial_accel_set(false)
 {}
 
-NewmarkSolver::~NewmarkSolver ()
-{}
+NewmarkSolver::~NewmarkSolver () = default;
 
 Real NewmarkSolver::error_order() const
 {

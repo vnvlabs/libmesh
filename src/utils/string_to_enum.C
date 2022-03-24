@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -35,6 +35,7 @@
 #include "libmesh/enum_norm_type.h"
 #include "libmesh/enum_order.h"
 #include "libmesh/enum_parallel_type.h"
+#include "libmesh/enum_partitioner_type.h"
 #include "libmesh/enum_point_locator_type.h"
 #include "libmesh/enum_preconditioner_type.h"
 #include "libmesh/enum_quadrature_type.h"
@@ -115,6 +116,7 @@ void init_elem_type_to_enum ()
       elem_type_to_enum["TRISHELL3"      ]=TRISHELL3;
       elem_type_to_enum["TRI3SUBDIVISION"]=TRI3SUBDIVISION;
       elem_type_to_enum["TRI6"           ]=TRI6;
+      elem_type_to_enum["TRI7"           ]=TRI7;
 
       elem_type_to_enum["QUAD"           ]=QUAD4;
       elem_type_to_enum["QUAD4"          ]=QUAD4;
@@ -126,6 +128,7 @@ void init_elem_type_to_enum ()
       elem_type_to_enum["TET"            ]=TET4;
       elem_type_to_enum["TET4"           ]=TET4;
       elem_type_to_enum["TET10"          ]=TET10;
+      elem_type_to_enum["TET14"          ]=TET14;
 
       elem_type_to_enum["HEX"            ]=HEX8;
       elem_type_to_enum["HEX8"           ]=HEX8;
@@ -136,11 +139,13 @@ void init_elem_type_to_enum ()
       elem_type_to_enum["PRISM6"         ]=PRISM6;
       elem_type_to_enum["PRISM15"        ]=PRISM15;
       elem_type_to_enum["PRISM18"        ]=PRISM18;
+      elem_type_to_enum["PRISM20"        ]=PRISM20;
 
       elem_type_to_enum["PYRAMID"        ]=PYRAMID5;
       elem_type_to_enum["PYRAMID5"       ]=PYRAMID5;
       elem_type_to_enum["PYRAMID13"      ]=PYRAMID13;
       elem_type_to_enum["PYRAMID14"      ]=PYRAMID14;
+      elem_type_to_enum["PYRAMID18"      ]=PYRAMID18;
 
       elem_type_to_enum["INFEDGE"        ]=INFEDGE2;
       elem_type_to_enum["INFEDGE2"       ]=INFEDGE2;
@@ -162,6 +167,22 @@ void init_elem_type_to_enum ()
       elem_type_to_enum["NODEELEM"       ]=NODEELEM;
 
       elem_type_to_enum["INVALID_ELEM"   ]=INVALID_ELEM;
+    }
+}
+
+
+INSTANTIATE_ENUM_MAPS(ElemMappingType, elem_mapping_type)
+
+//----------------------------------------------------
+
+// Initialize elem_type_to_enum on first call
+void init_elem_mapping_type_to_enum ()
+{
+  if (elem_mapping_type_to_enum.empty())
+    {
+      elem_mapping_type_to_enum["LAGRANGE_MAP"          ]=LAGRANGE_MAP;
+      elem_mapping_type_to_enum["RATIONAL_BERNSTEIN_MAP"]=RATIONAL_BERNSTEIN_MAP;
+      elem_mapping_type_to_enum["INVALID_MAP"           ]=INVALID_MAP;
     }
 }
 
@@ -294,6 +315,37 @@ void init_quadrature_type_to_enum ()
 }
 
 
+INSTANTIATE_ENUM_MAPS(PartitionerType, partitioner_type)
+
+// Initialize partitioner_type_to_enum on first call
+void init_partitioner_type_to_enum ()
+{
+  if (partitioner_type_to_enum.empty())
+    {
+      partitioner_type_to_enum["CENTROID_PARTITIONER"        ]=CENTROID_PARTITIONER;
+      partitioner_type_to_enum["LINEAR_PARTITIONER"          ]=LINEAR_PARTITIONER;
+      partitioner_type_to_enum["SFC_PARTITIONER"             ]=SFC_PARTITIONER;
+      partitioner_type_to_enum["HILBERT_SFC_PARTITIONER"     ]=HILBERT_SFC_PARTITIONER;
+      partitioner_type_to_enum["MORTON_SFC_PARTITIONER"      ]=MORTON_SFC_PARTITIONER;
+      partitioner_type_to_enum["METIS_PARTITIONER"           ]=METIS_PARTITIONER;
+      partitioner_type_to_enum["PARMETIS_PARTITIONER"        ]=PARMETIS_PARTITIONER;
+      partitioner_type_to_enum["SUBDOMAIN_PARTITIONER"       ]=SUBDOMAIN_PARTITIONER;
+      partitioner_type_to_enum["MAPPED_SUBDOMAIN_PARTITIONER"]=MAPPED_SUBDOMAIN_PARTITIONER;
+
+      //shorter
+      partitioner_type_to_enum["CENTROID"                    ]=CENTROID_PARTITIONER;
+      partitioner_type_to_enum["LINEAR"                      ]=LINEAR_PARTITIONER;
+      partitioner_type_to_enum["SFC"                         ]=SFC_PARTITIONER;
+      partitioner_type_to_enum["HILBERT_SFC"                 ]=HILBERT_SFC_PARTITIONER;
+      partitioner_type_to_enum["MORTON_SFC"                  ]=MORTON_SFC_PARTITIONER;
+      partitioner_type_to_enum["METIS"                       ]=METIS_PARTITIONER;
+      partitioner_type_to_enum["PARMETIS"                    ]=PARMETIS_PARTITIONER;
+      partitioner_type_to_enum["SUBDOMAIN"                   ]=SUBDOMAIN_PARTITIONER;
+      partitioner_type_to_enum["MAPPED_SUBDOMAIN"            ]=MAPPED_SUBDOMAIN_PARTITIONER;
+    }
+}
+
+
 INSTANTIATE_ENUM_MAPS(PreconditionerType, preconditioner_type)
 
 // Initialize preconditioner_type_to_enum on first call
@@ -302,19 +354,20 @@ void init_preconditioner_type_to_enum ()
   if (preconditioner_type_to_enum.empty())
     {
       preconditioner_type_to_enum["IDENTITY_PRECOND"      ]=IDENTITY_PRECOND;
-      preconditioner_type_to_enum["JACOBI_PRECOND"    ]=JACOBI_PRECOND;
+      preconditioner_type_to_enum["JACOBI_PRECOND"        ]=JACOBI_PRECOND;
       preconditioner_type_to_enum["BLOCK_JACOBI_PRECOND"  ]=BLOCK_JACOBI_PRECOND;
       preconditioner_type_to_enum["SOR_PRECOND"           ]=SOR_PRECOND;
       preconditioner_type_to_enum["SSOR_PRECOND"          ]=SSOR_PRECOND;
-      preconditioner_type_to_enum["EISENSTAT_PRECOND"    ]=EISENSTAT_PRECOND;
-      preconditioner_type_to_enum["ASM_PRECOND"    ]=ASM_PRECOND;
-      preconditioner_type_to_enum["CHOLESKY_PRECOND"    ]=CHOLESKY_PRECOND;
-      preconditioner_type_to_enum["ICC_PRECOND"    ]=ICC_PRECOND;
+      preconditioner_type_to_enum["EISENSTAT_PRECOND"     ]=EISENSTAT_PRECOND;
+      preconditioner_type_to_enum["ASM_PRECOND"           ]=ASM_PRECOND;
+      preconditioner_type_to_enum["CHOLESKY_PRECOND"      ]=CHOLESKY_PRECOND;
+      preconditioner_type_to_enum["ICC_PRECOND"           ]=ICC_PRECOND;
       preconditioner_type_to_enum["ILU_PRECOND"           ]=ILU_PRECOND;
       preconditioner_type_to_enum["LU_PRECOND"            ]=LU_PRECOND;
       preconditioner_type_to_enum["USER_PRECOND"          ]=USER_PRECOND;
       preconditioner_type_to_enum["SHELL_PRECOND"         ]=SHELL_PRECOND;
       preconditioner_type_to_enum["AMG_PRECOND"           ]=AMG_PRECOND;
+      preconditioner_type_to_enum["SVD_PRECOND"           ]=SVD_PRECOND;
       preconditioner_type_to_enum["INVALID_PRECONDITIONER"]=INVALID_PRECONDITIONER;
 
       //shorter
@@ -332,6 +385,7 @@ void init_preconditioner_type_to_enum ()
       preconditioner_type_to_enum["USER"        ]=USER_PRECOND;
       preconditioner_type_to_enum["SHELL"       ]=SHELL_PRECOND;
       preconditioner_type_to_enum["AMG"         ]=AMG_PRECOND;
+      preconditioner_type_to_enum["SVD"         ]=SVD_PRECOND;
       preconditioner_type_to_enum["INVALID"     ]=INVALID_PRECONDITIONER;
     }
 }
@@ -642,10 +696,12 @@ namespace Utility {
 
 
 INSTANTIATE_STRING_TO_ENUM(ElemType,elem_type)
+INSTANTIATE_STRING_TO_ENUM(ElemMappingType,elem_mapping_type)
 INSTANTIATE_STRING_TO_ENUM(Order,order)
 INSTANTIATE_STRING_TO_ENUM(FEFamily,fefamily)
 INSTANTIATE_STRING_TO_ENUM(InfMapType,inf_map_type)
 INSTANTIATE_STRING_TO_ENUM(QuadratureType,quadrature_type)
+INSTANTIATE_STRING_TO_ENUM(PartitionerType,partitioner_type)
 INSTANTIATE_STRING_TO_ENUM(PreconditionerType,preconditioner_type)
 
 #ifdef LIBMESH_ENABLE_AMR

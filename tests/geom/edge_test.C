@@ -15,6 +15,7 @@
 #include <libmesh/cell_pyramid14.h>
 #include <libmesh/cell_pyramid5.h>
 #include <libmesh/cell_tet10.h>
+#include <libmesh/cell_tet14.h>
 #include <libmesh/cell_tet4.h>
 #include <libmesh/edge_edge2.h>
 #include <libmesh/edge_edge3.h>
@@ -27,6 +28,7 @@
 #include <libmesh/face_quad9.h>
 #include <libmesh/face_tri3.h>
 #include <libmesh/face_tri6.h>
+#include <libmesh/face_tri7.h>
 
 #include <vector>
 
@@ -47,6 +49,9 @@ class EdgeTest : public CppUnit::TestCase {
 private:
   ElemClass elem;
   std::vector<std::unique_ptr<Node>> nodes;
+
+protected:
+  std::string libmesh_suite_name;
 
 public:
   void setUp() {
@@ -69,6 +74,8 @@ public:
 
   void testIsNodeOnEdge()
   {
+    LOG_UNIT_TEST;
+
     for (auto e : make_range(indexbegin, indexend))
       {
         std::unique_ptr<Elem> edge = elem.build_edge_ptr(e);
@@ -97,6 +104,8 @@ public:
 
   void testNodesOnEdge()
   {
+    LOG_UNIT_TEST;
+
     for (auto e : make_range(indexbegin, indexend))
       {
         std::unique_ptr<Elem> edge = elem.build_edge_ptr(e);
@@ -121,6 +130,8 @@ public:
 
   void testBuildEdgePtr()
   {
+    LOG_UNIT_TEST;
+
     for (auto e : make_range(indexbegin, indexend))
       {
         std::unique_ptr<Elem> edge = elem.build_edge_ptr(e);
@@ -141,6 +152,13 @@ public:
   class EdgeTest_##elemclass##_##edgetype##_##indexbegin##_##indexend :                \
     public EdgeTest<elemclass, edgetype, indexbegin, indexend> {                       \
   public:                                                                              \
+  EdgeTest_##elemclass##_##edgetype##_##indexbegin##_##indexend() :                    \
+    EdgeTest<elemclass,edgetype,indexbegin,indexend>() {                               \
+    if (unitlog->summarized_logs_enabled())                                            \
+      this->libmesh_suite_name = "EdgeTest";                                           \
+    else                                                                               \
+      this->libmesh_suite_name = "EdgeTest_" #elemclass"_" #edgetype "_" #indexbegin "_" #indexend; \
+  }                                                                                    \
   CPPUNIT_TEST_SUITE( EdgeTest_##elemclass##_##edgetype##_##indexbegin##_##indexend ); \
   EDGETEST                                                                             \
   CPPUNIT_TEST_SUITE_END();                                                            \
@@ -158,12 +176,14 @@ INSTANTIATE_EDGETEST(Pyramid13, EDGE3, 0, 8);
 INSTANTIATE_EDGETEST(Pyramid14, EDGE3, 0, 8);
 INSTANTIATE_EDGETEST(Pyramid5,  EDGE2, 0, 8);
 INSTANTIATE_EDGETEST(Tet10,     EDGE3, 0, 6);
+INSTANTIATE_EDGETEST(Tet14,     EDGE3, 0, 6);
 INSTANTIATE_EDGETEST(Tet4,      EDGE2, 0, 6);
 INSTANTIATE_EDGETEST(Quad4,     EDGE2, 0, 4);
 INSTANTIATE_EDGETEST(Quad8,     EDGE3, 0, 4);
 INSTANTIATE_EDGETEST(Quad9,     EDGE3, 0, 4);
 INSTANTIATE_EDGETEST(Tri3,      EDGE2, 0, 3);
 INSTANTIATE_EDGETEST(Tri6,      EDGE3, 0, 3);
+INSTANTIATE_EDGETEST(Tri7,      EDGE3, 0, 3);
 
 #ifdef LIBMESH_ENABLE_INFINITE_ELEMENTS
 INSTANTIATE_EDGETEST(InfHex16,   EDGE3,    0, 4);

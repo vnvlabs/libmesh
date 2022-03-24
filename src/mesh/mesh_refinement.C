@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -125,10 +125,7 @@ void MeshRefinement::set_periodic_boundaries_ptr(PeriodicBoundaries * pb_ptr)
 
 
 
-MeshRefinement::~MeshRefinement ()
-{
-  this->clear();
-}
+MeshRefinement::~MeshRefinement () = default;
 
 
 
@@ -178,7 +175,7 @@ Node * MeshRefinement::add_node(Elem & parent,
   for (auto n : parent.node_index_range())
     {
       // The value from the embedding matrix
-      const float em_val = parent.embedding_matrix(child,node,n);
+      const Real em_val = parent.embedding_matrix(child,node,n);
 
       if (em_val != 0.)
         {

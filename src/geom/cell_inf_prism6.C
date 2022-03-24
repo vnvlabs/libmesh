@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -62,16 +62,6 @@ const unsigned int InfPrism6::edge_nodes_map[InfPrism6::num_edges][InfPrism6::no
     {2, 5}  // Edge 5
   };
 
-const unsigned int InfPrism6::edge_sides_map[InfPrism6::num_edges][2] =
-  {
-    {0, 1}, // Edge 0
-    {0, 2}, // Edge 1
-    {0, 3}, // Edge 2
-    {1, 3}, // Edge 3
-    {1, 2}, // Edge 4
-    {2, 3}  // Edge 5
-  };
-
 // ------------------------------------------------------------
 // InfPrism6 class member functions
 
@@ -116,13 +106,6 @@ InfPrism6::nodes_on_edge(const unsigned int e) const
 {
   libmesh_assert_less(e, n_edges());
   return {std::begin(edge_nodes_map[e]), std::end(edge_nodes_map[e])};
-}
-
-std::vector<unsigned>
-InfPrism6::sides_on_edge(const unsigned int e) const
-{
-  libmesh_assert_less(e, n_edges());
-  return {std::begin(edge_sides_map[e]), std::end(edge_sides_map[e])};
 }
 
 bool InfPrism6::is_node_on_edge(const unsigned int n,
@@ -212,6 +195,7 @@ std::unique_ptr<Elem> InfPrism6::build_side_ptr (const unsigned int i,
   face->set_interior_parent(this);
 
   face->subdomain_id() = this->subdomain_id();
+  face->set_mapping_type(this->mapping_type());
 #ifdef LIBMESH_ENABLE_AMR
   face->set_p_level(this->p_level());
 #endif
@@ -276,6 +260,7 @@ void InfPrism6::build_edge_ptr (std::unique_ptr<Elem> & edge,
     }
 
   edge->subdomain_id() = this->subdomain_id();
+  edge->set_mapping_type(this->mapping_type());
 #ifdef LIBMESH_ENABLE_AMR
   edge->set_p_level(this->p_level());
 #endif
@@ -322,7 +307,7 @@ void InfPrism6::connectivity(const unsigned int libmesh_dbg_var(sc),
 
 #ifdef LIBMESH_ENABLE_AMR
 
-const float InfPrism6::_embedding_matrix[InfPrism6::num_children][InfPrism6::num_nodes][InfPrism6::num_nodes] =
+const Real InfPrism6::_embedding_matrix[InfPrism6::num_children][InfPrism6::num_nodes][InfPrism6::num_nodes] =
   {
     // embedding matrix for child 0
     {
@@ -382,7 +367,18 @@ InfPrism6::permute(unsigned int perm_num)
     {
       swap3nodes(0,1,2);
       swap3nodes(3,4,5);
+      swap3neighbors(1,2,3);
     }
+}
+
+
+ElemType
+InfPrism6::side_type (const unsigned int s) const
+{
+  libmesh_assert_less (s, 4);
+  if (s == 0)
+    return TRI3;
+  return INFQUAD4;
 }
 
 } // namespace libMesh

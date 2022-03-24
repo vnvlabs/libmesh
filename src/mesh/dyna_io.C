@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2022 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -22,6 +22,7 @@
 #include "libmesh/elem.h"
 #include "libmesh/dyna_io.h"
 #include "libmesh/mesh_base.h"
+#include "libmesh/mesh_tools.h"
 #include "libmesh/int_range.h"
 #include "libmesh/utility.h"
 
@@ -302,7 +303,9 @@ void DynaIO::read_mesh(std::istream & in)
             spline_node_ptrs.resize(n_spline_nodes);
             spline_weights.resize(n_spline_nodes);
 
-            if (weight_control_flag)
+            // Even if we have w=1.0, we still want RATIONAL_BERNSTEIN
+            // elements!
+            // if (weight_control_flag)
               {
                 // If we ever add more nodes that aren't in this file,
                 // merge this mesh with a non-spline mesh, etc., 1.0
@@ -587,20 +590,12 @@ void DynaIO::read_mesh(std::istream & in)
            make_range(block_n_elem[block_num]))
         {
           // Consult the import element table to determine which element to build
-          auto eletypes_it =
-            _element_maps.in.find(std::make_tuple(block_elem_type[block_num],
-                                                  block_dim[block_num],
-                                                  block_p[block_num]));
+          const ElementDefinition & elem_defn =
+            find_elem_definition(block_elem_type[block_num],
+                                 block_dim[block_num],
+                                 block_p[block_num]);
 
-          // Make sure we actually found something
-          libmesh_error_msg_if
-            (eletypes_it == _element_maps.in.end(),
-             "Element of type " << block_elem_type[block_num] <<
-             " dim " << block_dim[block_num] <<
-             " degree " << block_p[block_num] << " not found!");
-
-          const ElementDefinition * elem_defn = &(eletypes_it->second);
-          auto elem = Elem::build(elem_defn->type);
+          auto elem = Elem::build(elem_defn.type);
           libmesh_error_msg_if(elem->dim() != block_dim[block_num],
                                "Elem dim " << elem->dim() <<
                                " != block_dim " << block_dim[block_num]);
@@ -682,7 +677,7 @@ void DynaIO::read_mesh(std::istream & in)
               auto local_node_it = local_nodes.find(key);
 
               if (local_node_it != local_nodes.end())
-                elem->set_node(elem_defn->nodes[elem_node_index]) =
+                elem->set_node(elem_defn.nodes[elem_node_index]) =
                   local_node_it->second;
               else
                 {
@@ -724,7 +719,7 @@ void DynaIO::read_mesh(std::istream & in)
                   if (weight_control_flag)
                     n->set_extra_datum<Real>(weight_index, w);
                   local_nodes[key] = n;
-                  elem->set_node(elem_defn->nodes[elem_node_index]) = n;
+                  elem->set_node(elem_defn.nodes[elem_node_index]) = n;
 
                   constraint_rows[n] = constraint_row;
                 }
@@ -735,7 +730,7 @@ void DynaIO::read_mesh(std::istream & in)
     }
 
   if (!_keep_spline_nodes)
-    this->clear_spline_nodes();
+    MeshTools::clear_spline_nodes(MeshInput<MeshBase>::mesh());
 }
 
 
@@ -748,33 +743,55 @@ void DynaIO::add_spline_constraints(DofMap &,
 
 void DynaIO::clear_spline_nodes()
 {
-  MeshBase & mesh = MeshInput<MeshBase>::mesh();
+  libmesh_deprecated();
 
-  auto & constraint_rows = mesh.get_constraint_rows();
-
-  std::vector<Elem *> nodeelem_to_delete;
-
-  for (auto & elem : mesh.element_ptr_range())
-    if (elem->type() == NODEELEM)
-      nodeelem_to_delete.push_back(elem);
-
-  // All our constraint_rows ought to be for spline constraints we're
-  // about to get rid of.
-#ifndef NDEBUG
-  for (auto & node_row : constraint_rows)
-    for (auto pr : node_row.second)
-      libmesh_assert(pr.first.first->type() == NODEELEM);
-#endif
-
-  constraint_rows.clear();
-
-  for (Elem * elem : nodeelem_to_delete)
-    {
-      Node * node = elem->node_ptr(0);
-      mesh.delete_elem(elem);
-      mesh.delete_node(node);
-    }
+  MeshTools::clear_spline_nodes(MeshInput<MeshBase>::mesh());
 }
+
+
+
+const DynaIO::ElementDefinition &
+DynaIO::find_elem_definition(dyna_int_type dyna_elem,
+                             int dim, int p)
+{
+  auto eletypes_it =
+    _element_maps.in.find(std::make_tuple(dyna_elem, dim, p));
+
+  // Make sure we actually found something
+  libmesh_error_msg_if
+    (eletypes_it == _element_maps.in.end(),
+     "Element of type " << dyna_elem <<
+     " dim " << dim <<
+     " degree " << p << " not found!");
+
+  return eletypes_it->second;
+}
+
+
+
+const DynaIO::ElementDefinition &
+DynaIO::find_elem_definition(ElemType libmesh_elem,
+                             int libmesh_dbg_var(dim),
+                             int libmesh_dbg_var(p))
+{
+  auto eletypes_it =
+    _element_maps.out.find(libmesh_elem);
+
+  // Make sure we actually found something
+  libmesh_error_msg_if
+    (eletypes_it == _element_maps.out.end(),
+     "Element of type " << libmesh_elem <<
+     " not found!");
+
+  // Make sure we found the right thing
+  libmesh_assert_equal_to(eletypes_it->second.dim, dim);
+  libmesh_assert_equal_to(eletypes_it->second.p, p);
+
+
+  return eletypes_it->second;
+}
+
+
 
 
 } // namespace libMesh
