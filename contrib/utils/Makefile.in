@@ -9,6 +9,9 @@ include $(LIBMESH_DIR)/Make.common
 
 target     := ./example-$(METHOD)
 
+VNV_PACKAGE = EXAMPLE_$(METHOD)
+libmesh_CPPFLAGS += -DVNV_APP_NAME=${VNV_PACKAGE}
+
 
 ###############################################################################
 # File management.  This is where the source, header, and object files are
@@ -22,6 +25,7 @@ srcfiles 	:= $(wildcard *.C)
 # object files
 objects		:= $(patsubst %.C, %.$(obj-suffix), $(srcfiles))
 ###############################################################################
+
 
 
 
@@ -76,3 +80,34 @@ complete: $(wildcard *.in)
 	@echo "***************************************************************"
 
 ###############################################################################
+#### VNV RULES ####
+
+#Reset the vnv file and delete the cache 
+vnv-reset: clean
+	printf "#include \"VnV.h\" \n INJECTION_REGISTRATION(VNV_APP_NAME){}" > vnv_.C
+	@rm -f vnv.__cache__
+
+
+#Reset everything + remove the compile_commands file. 
+vnv-dist-clean: vnv-reset
+	rm -f compile_commands.json 
+
+
+#Generate a compile commands database by cleaning, then building the example. 
+compile_commands.json:  
+	make clean
+	bear make       
+
+
+#Generate the VnV File (assumes compile commands.json exists)
+vnv-gen: compile_commands.json
+	${VNV_DIR}/bin/vnv-matcher --fix-omp --cache vnv.__cache__ --regFile ${LIBMESH_DIR}/vnv.__registration__ --targetFile ${PWD}/$(notdir ${target}) --package $(VNV_PACKAGE) --output vnv_.C compile_commands.json
+
+
+#### Regenerate the VnV File and build 
+vnv: vnv-gen $(notdir $(target))
+
+
+#Initialize and build vnv 
+vnv-init: vnv-reset vnv
+      

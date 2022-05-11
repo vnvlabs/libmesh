@@ -2,7 +2,7 @@
 #include <stddef.h>
 #include "VnV.h"
 
-INJECTION_EXECUTABLE(LIBMESH) 
+INJECTION_LIBRARY(LIBMESH) 
 
 static const char* libmesh_vnv_schema = "{\"type\": \"object\", \"required\":[]}";
 
