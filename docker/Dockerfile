@@ -5,8 +5,7 @@ FROM ${FROM_IMAGE}:latest
 ARG COMMIT_HASH=unknown
 LABEL vnv.version.libmesh=${COMMIT_HASH}
 
-ENV VNV_CONFIG=${VNV_CONFIG}:${SOURCE_DIR}/libmesh/.vnv-config.json \
-    LIBMESH_DIR=${SOFTWARE_DIR}/libmesh \
+ENV LIBMESH_DIR=${SOFTWARE_DIR}/libmesh \
     OMPI_ALLOW_RUN_AS_ROOT=1 \
     OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 
 
@@ -37,6 +36,11 @@ RUN  cd ${SOURCE_DIR}/libmesh \
     && make \
     && make install
 
+# Build the libmesh vnv example (only one example is instimented currently). 
+RUN cd ${LIBMESH_DIR}/examples/adaptivity/ex1/ && make 
+
+ENV VNV_CONFIG=${VNV_CONFIG}:${LIBMESH_DIR}/vnv.__registration__
+ENV VNV_CONFIG=${VNV_CONFIG}:${SOURCE_DIR}/libmesh/docker/config/vnv.__registration__
 
 
 

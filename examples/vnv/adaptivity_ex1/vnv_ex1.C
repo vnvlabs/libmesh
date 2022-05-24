@@ -51,11 +51,6 @@
 #include "libmesh/mesh_refinement.h"
 #include "libmesh/enum_solver_package.h"
 
-
-#include "VnV.h"
-INJECTION_EXECUTABLE(VNV_APP_NAME)
-INJECTION_SUBPACKAGE(VNV_APP_NAME,LIBMESH)
-
 // Bring in everything from the libMesh namespace
 using namespace libMesh;
 
@@ -70,8 +65,6 @@ int main(int argc, char ** argv)
   // object goes out of scope, other libraries and resources are
   // finalized.
   LibMeshInit init (argc, argv);
-  
-  INJECTION_INITIALIZE(VNV_APP_NAME,&argc,&argv,"vnv.json");
 
   // This example requires a linear solver package.
   libmesh_example_requires(libMesh::default_solver_package() != INVALID_SOLVER_PACKAGE,
@@ -177,8 +170,6 @@ int main(int argc, char ** argv)
   // Load gnuplot, then type "call 'gnuplot_script'" from gnuplot prompt
   plot.write_equation_systems("gnuplot_script", equation_systems);
 #endif // #ifndef LIBMESH_ENABLE_AMR
-
-  INJECTION_FINALIZE(VNV_APP_NAME);
 
   // All done.  libMesh objects are destroyed here.  Because the
   // LibMeshInit object was created first, its destruction occurs
