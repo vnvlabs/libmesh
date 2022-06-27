@@ -11,7 +11,7 @@ static const char* libmesh_vnv_schema = "{\"type\": \"object\", \"required\":[]}
  *
  *
  */ 
-INJECTION_OPTIONS(LIBMESH, libmesh_vnv_schema) {
+INJECTION_OPTIONS(LIBMESH, libmesh_vnv_schema,void) {
     return nullptr;
 }
 
