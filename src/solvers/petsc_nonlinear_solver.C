@@ -33,6 +33,8 @@
 #include "libmesh/solver_configuration.h"
 #include "libmesh/petscdmlibmesh.h"
 
+#include "VnV.h"
+
 namespace libMesh
 {
 class ResidualContext
@@ -396,7 +398,16 @@ extern "C"
   PetscErrorCode
   libmesh_petsc_snes_jacobian(SNES snes, Vec x, Mat jac, Mat pc, void * ctx)
   {
-    LOG_SCOPE("jacobian()", "PetscNonlinearSolver");
+    
+    /**
+      * @title Petsc Non Linear Solver
+      *
+      * The Petsc nonlinear solver group
+      *
+      **/
+    INJECTION_LOOP_BEGIN(LIBMESH, VWORLD, PetscNonlinearSolver, snes,x,jac,pc);
+    
+    LOG_SCOPE("jacobian()", "PetscNonlinearSolver"); 
 
     PetscErrorCode ierr=0;
 
@@ -483,6 +494,7 @@ extern "C"
     PC.close();
     Jac.close();
 
+    INJECTION_LOOP_END(LIBMESH,PetscNonlinearSolver);
     return ierr;
   }
 
@@ -649,13 +661,22 @@ template <typename T>
 void PetscNonlinearSolver<T>::init (const char * name)
 {
   // Initialize the data structures if not done so already.
-  if (!this->initialized())
+  if (!this->initialized()) 
     {
+      /**
+        * @title Initializing Petsc Nonlinear solver
+        *
+        * Here we are initializing the Petsc Non linear solver
+        *
+        **/
+      INJECTION_LOOP_BEGIN(LIBMESH, VWORLD, InitializePetscNLS, name);
+      
+
       this->_is_initialized = true;
 
       PetscErrorCode ierr=0;
 
-      ierr = SNESCreate(this->comm().get(), _snes.get());
+      ierr = SNESCreate(this->comm().get(), _snes.get()); //PETSCTODO
       LIBMESH_CHKERR(ierr);
 
       if (name)
@@ -667,16 +688,16 @@ void PetscNonlinearSolver<T>::init (const char * name)
       // Attaching a DM to SNES.
       {
         WrappedPetsc<DM> dm;
-        ierr = DMCreate(this->comm().get(), dm.get()); LIBMESH_CHKERR(ierr);
-        ierr = DMSetType(dm, DMLIBMESH);               LIBMESH_CHKERR(ierr);
-        ierr = DMlibMeshSetSystem(dm, this->system()); LIBMESH_CHKERR(ierr);
+        ierr = DMCreate(this->comm().get(), dm.get()); LIBMESH_CHKERR(ierr);  //PETSCTODO
+        ierr = DMSetType(dm, DMLIBMESH);               LIBMESH_CHKERR(ierr); //PETSCTODO
+        ierr = DMlibMeshSetSystem(dm, this->system()); LIBMESH_CHKERR(ierr); //PETSCTODO
         if (name)
           {
-            ierr = DMSetOptionsPrefix(dm, name);       LIBMESH_CHKERR(ierr);
+            ierr = DMSetOptionsPrefix(dm, name);       LIBMESH_CHKERR(ierr); //PETSCTODO
           }
-        ierr = DMSetFromOptions(dm);                   LIBMESH_CHKERR(ierr);
-        ierr = DMSetUp(dm);                            LIBMESH_CHKERR(ierr);
-        ierr = SNESSetDM(_snes, dm);                   LIBMESH_CHKERR(ierr);
+        ierr = DMSetFromOptions(dm);                   LIBMESH_CHKERR(ierr); //PETSCTODO
+        ierr = DMSetUp(dm);                            LIBMESH_CHKERR(ierr); //PETSCTODO
+        ierr = SNESSetDM(_snes, dm);                   LIBMESH_CHKERR(ierr); //PETSCTODO
         // SNES now owns the reference to dm.
       }
 
@@ -712,6 +733,9 @@ void PetscNonlinearSolver<T>::init (const char * name)
           PCShellSetSetUp(pc,libmesh_petsc_preconditioner_setup);
           PCShellSetApply(pc,libmesh_petsc_preconditioner_apply);
         }
+
+        INJECTION_LOOP_END(LIBMESH, InitializePetscNLS);
+      
     }
 
 
@@ -812,7 +836,16 @@ PetscNonlinearSolver<T>::solve (SparseMatrix<T> &  pre_in,  // System Preconditi
                                 const double,              // Stopping tolerance
                                 const unsigned int)
 {
-  LOG_SCOPE("solve()", "PetscNonlinearSolver");
+  
+  /**
+    * @title Performing the Non linear solve.
+    *
+    * Here we are performing the nonlinear solve
+    *
+  **/
+  INJECTION_LOOP_BEGIN(LIBMESH, VWORLD, ExecutePetscNLS, *this, x_in, r_in);
+      
+  LOG_SCOPE("solve()", "PetscNonlinearSolver"); 
   this->init ();
 
   // Make sure the data passed in are really of Petsc types
@@ -973,7 +1006,7 @@ PetscNonlinearSolver<T>::solve (SparseMatrix<T> &  pre_in,  // System Preconditi
     LIBMESH_CHKERR(ierr);
   }
 
-  ierr = SNESSolve (_snes, PETSC_NULL, x->vec());
+  ierr = SNESSolve (_snes, PETSC_NULL, x->vec()); 
   LIBMESH_CHKERR(ierr);
 
   ierr = SNESGetIterationNumber(_snes, &n_iterations);
@@ -999,6 +1032,8 @@ PetscNonlinearSolver<T>::solve (SparseMatrix<T> &  pre_in,  // System Preconditi
   this->converged = (_reason >= 0);
 
   this->clear();
+
+  INJECTION_LOOP_END(LIBMESH, ExecutePetscNLS);
 
   // return the # of its. and the final residual norm.
   return std::make_pair(n_iterations, final_residual_norm);

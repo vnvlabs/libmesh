@@ -25,6 +25,8 @@
 #include "libmesh/nonlinear_solver.h"
 #include "libmesh/sparse_matrix.h"
 
+#include "VnV.h"
+
 namespace libMesh
 {
 
@@ -158,8 +160,18 @@ void NonlinearImplicitSystem::set_solver_parameters ()
 
 void NonlinearImplicitSystem::solve ()
 {
+
+
+
   // Log how long the nonlinear solve takes.
-  LOG_SCOPE("solve()", "System");
+  LOG_SCOPE("solve()", "System"); 
+
+  /**
+   * @title perform nonlinear solve
+   * 
+   * description. 
+  */
+  INJECTION_LOOP_BEGIN(LIBMESH, VWORLD, PerformNonlinearSolve, *this);
 
   this->set_solver_parameters();
 
@@ -193,6 +205,9 @@ void NonlinearImplicitSystem::solve ()
 
   // Update the system after the solve
   this->update();
+
+  INJECTION_LOOP_END(LIBMESH, PerformNonlinearSolve);
+
 }
 
 
