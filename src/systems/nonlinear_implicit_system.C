@@ -171,7 +171,7 @@ void NonlinearImplicitSystem::solve ()
    * 
    * description. 
   */
-  INJECTION_LOOP_BEGIN(LIBMESH, VWORLD, PerformNonlinearSolve, *this);
+  INJECTION_LOOP_BEGIN(LIBMESH, VWORLD, PerformNonlinearSolve,VNV_NOCALLBACK, *this);
 
   this->set_solver_parameters();
 
@@ -206,7 +206,7 @@ void NonlinearImplicitSystem::solve ()
   // Update the system after the solve
   this->update();
 
-  INJECTION_LOOP_END(LIBMESH, PerformNonlinearSolve);
+  INJECTION_LOOP_END(LIBMESH, PerformNonlinearSolve,VNV_NOCALLBACK);
 
 }
 

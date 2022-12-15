@@ -405,7 +405,7 @@ extern "C"
       * The Petsc nonlinear solver group
       *
       **/
-    INJECTION_LOOP_BEGIN(LIBMESH, VWORLD, PetscNonlinearSolver, snes,x,jac,pc);
+    INJECTION_LOOP_BEGIN(LIBMESH, VWORLD, PetscNonlinearSolver, VNV_NOCALLBACK, snes,x,jac,pc);
     
     LOG_SCOPE("jacobian()", "PetscNonlinearSolver"); 
 
@@ -494,7 +494,7 @@ extern "C"
     PC.close();
     Jac.close();
 
-    INJECTION_LOOP_END(LIBMESH,PetscNonlinearSolver);
+    INJECTION_LOOP_END(LIBMESH,PetscNonlinearSolver,VNV_NOCALLBACK);
     return ierr;
   }
 
@@ -669,7 +669,7 @@ void PetscNonlinearSolver<T>::init (const char * name)
         * Here we are initializing the Petsc Non linear solver
         *
         **/
-      INJECTION_LOOP_BEGIN(LIBMESH, VWORLD, InitializePetscNLS, name);
+      INJECTION_LOOP_BEGIN(LIBMESH, VWORLD, InitializePetscNLS,VNV_NOCALLBACK, name);
       
 
       this->_is_initialized = true;
@@ -734,7 +734,7 @@ void PetscNonlinearSolver<T>::init (const char * name)
           PCShellSetApply(pc,libmesh_petsc_preconditioner_apply);
         }
 
-        INJECTION_LOOP_END(LIBMESH, InitializePetscNLS);
+        INJECTION_LOOP_END(LIBMESH, InitializePetscNLS,VNV_NOCALLBACK);
       
     }
 
@@ -843,7 +843,7 @@ PetscNonlinearSolver<T>::solve (SparseMatrix<T> &  pre_in,  // System Preconditi
     * Here we are performing the nonlinear solve
     *
   **/
-  INJECTION_LOOP_BEGIN(LIBMESH, VWORLD, ExecutePetscNLS, *this, x_in, r_in);
+  INJECTION_LOOP_BEGIN(LIBMESH, VWORLD, ExecutePetscNLS, VNV_NOCALLBACK, *this, x_in, r_in);
       
   LOG_SCOPE("solve()", "PetscNonlinearSolver"); 
   this->init ();
@@ -1033,7 +1033,7 @@ PetscNonlinearSolver<T>::solve (SparseMatrix<T> &  pre_in,  // System Preconditi
 
   this->clear();
 
-  INJECTION_LOOP_END(LIBMESH, ExecutePetscNLS);
+  INJECTION_LOOP_END(LIBMESH, ExecutePetscNLS,VNV_NOCALLBACK);
 
   // return the # of its. and the final residual norm.
   return std::make_pair(n_iterations, final_residual_norm);
