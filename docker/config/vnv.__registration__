@@ -1,7 +1,7 @@
 {
     "logo" : {
-        "small" : "static/logo.jpeg",
-        "large" : "static/logo1.jpeg"
+        "small" : "static/libmesh.jpeg",
+        "large" : "static/libmesh1.jpeg"
     },
     "copyright" : {
         "message" : "RNET Technolgies Inc.",
