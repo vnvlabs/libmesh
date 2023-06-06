@@ -36,8 +36,9 @@ RUN  cd ${SOURCE_DIR}/libmesh \
 
 # Build the libmesh vnv example (only one example is instimented currently). 
 RUN cd ${LIBMESH_DIR}/examples/adaptivity/ex1/ && make 
-RUN cp -r ${SOFTWARE_DIR}/libmesh/vnv/gui ${SOFTWARE_DIR}/libmesh/gui
-RUN echo ${SOFTWARE_DIR}/libmesh/gui/vnv.__registration__ >> ${HOME}/.vnv
+
+RUN cp -r ${SOURCE_DIR}/libmesh/vnv/gui ${SOFTWARE_DIR}/libmesh/gui
+RUN python3 ${VNV_DIR}/scripts/register.py register ${SOFTWARE_DIR}/libmesh/gui/vnv.__registration__
 
 # Clean up the build and source. 
 RUN rm -r ${SOURCE_DIR}/libmesh
