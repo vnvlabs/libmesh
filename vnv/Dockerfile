@@ -2,8 +2,6 @@
 ARG FROM_IMAGE=vnv_petsc
 FROM ${FROM_IMAGE}
 
-ARG COMMIT_HASH=unknown
-LABEL vnv.version.libmesh=${COMMIT_HASH}
 
 ENV LIBMESH_DIR=${SOFTWARE_DIR}/libmesh \
     OMPI_ALLOW_RUN_AS_ROOT=1 \
@@ -30,7 +28,7 @@ RUN  cd ${SOURCE_DIR}/libmesh \
     && ${VNV_MATCHER} --package LIBMESH \
                       --output src/utils/vnv_LIBMESH.C \
                       --fix-omp \
-		      --ignore-dir ./contrib \
+		              --ignore-dir ./contrib \
                       --cache src/utils/vnv.__cache__\
                       compile_commands.json\
     && make \
@@ -38,10 +36,11 @@ RUN  cd ${SOURCE_DIR}/libmesh \
 
 # Build the libmesh vnv example (only one example is instimented currently). 
 RUN cd ${LIBMESH_DIR}/examples/adaptivity/ex1/ && make 
+RUN cp -r ${SOFTWARE_DIR}/libmesh/vnv/gui ${SOFTWARE_DIR}/libmesh/gui
+RUN echo ${SOFTWARE_DIR}/libmesh/gui/vnv.__registration__ >> ${HOME}/.vnv
 
-ENV VNV_CONFIG=${VNV_CONFIG}:${LIBMESH_DIR}/vnv.__registration__
-ENV VNV_CONFIG=${VNV_CONFIG}:${SOURCE_DIR}/libmesh/docker/config/vnv.__registration__
-
+# Clean up the build and source. 
+RUN rm -r ${SOURCE_DIR}/libmesh
 
 
 
