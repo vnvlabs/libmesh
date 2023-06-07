@@ -38,7 +38,7 @@ RUN  cd ${SOURCE_DIR}/libmesh \
 RUN cd ${LIBMESH_DIR}/examples/adaptivity/ex1/ && make 
 
 RUN cp -r ${SOURCE_DIR}/libmesh/vnv/gui ${SOFTWARE_DIR}/libmesh/gui
-RUN python3 ${VNV_DIR}/scripts/register.py register ${SOFTWARE_DIR}/libmesh/gui/vnv.__registration__
+ENV VNV_CONFIG=${VNV_CONFIG}:${SOFTWARE_DIR}/libmesh/gui/vnv.__registration__
 
 # Clean up the build and source. 
 RUN rm -r ${SOURCE_DIR}/libmesh

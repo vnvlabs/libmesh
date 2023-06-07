@@ -53,7 +53,7 @@
 
 
 #include "VnV.h"
-INJECTION_EXECUTABLE(VNV_APP_NAME)
+INJECTION_EXECUTABLE(VNV_APP_NAME,"{}")
 INJECTION_SUBPACKAGE(VNV_APP_NAME,LIBMESH)
 
 // Bring in everything from the libMesh namespace

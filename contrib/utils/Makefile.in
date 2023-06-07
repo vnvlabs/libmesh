@@ -93,5 +93,5 @@ compile_commands.json: vnv-dummy
 
 #Generate the VnV File (assumes compile commands.json exists)
 vnv-gen: compile_commands.json
-	${VNV_DIR}/bin/vnv-matcher --fix-omp --cache vnv.__cache__ --regFile ${LIBMESH_DIR}/vnv.__registration__ --targetFile ${PWD}/$(notdir ${target}) --package $(VNV_PACKAGE) --output vnv_.C compile_commands.json
+	${VNV_DIR}/bin/vnv-matcher --fix-omp --cache vnv.__cache__ --targetFile ${PWD}/$(notdir ${target}) --package $(VNV_PACKAGE) --output vnv_.C compile_commands.json
 
