@@ -38,12 +38,12 @@
 #define NC_VERSION       "4.6.2"
 
 #define NC_HAS_NC2       1 /*!< API version 2 support. */
-#define NC_HAS_NC4       1 /*!< API version 4 support. */
+#define NC_HAS_NC4       0 /*!< API version 4 support. */
 #define NC_HAS_HDF4      0 /*!< HDF4 support. */
-#define NC_HAS_HDF5      1 /*!< HDF5 support. */
+#define NC_HAS_HDF5      0 /*!< HDF5 support. */
 #define NC_HAS_SZIP      0 /*!< szip support (HDF5 only) */
-#define NC_HAS_DAP2      1 /*!< DAP2 support. */
-#define NC_HAS_DAP4      1 /*!< DAP4 support. */
+#define NC_HAS_DAP2      0 /*!< DAP2 support. */
+#define NC_HAS_DAP4      0 /*!< DAP4 support. */
 #define NC_HAS_DISKLESS  1 /*!< diskless support. */
 #define NC_HAS_MMAP      0 /*!< mmap support. */
 #define NC_HAS_JNA       0 /*!< jna support. */
