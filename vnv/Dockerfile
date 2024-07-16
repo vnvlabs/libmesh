@@ -16,6 +16,7 @@ RUN  cd ${SOURCE_DIR}/libmesh \
                     --with-mpi-include=/usr/include/x86_64-linux-gnu/mpich\
                     --prefix=${LIBMESH_DIR} \
                     --enable-silent-rules \
+                    --enable-hdf5 \
                     --enable-unique-id \
                     --disable-warnings \
                     --with-thread-model=openmp\
@@ -36,9 +37,6 @@ RUN  cd ${SOURCE_DIR}/libmesh \
 
 # Build the libmesh vnv example (only one example is instimented currently). 
 RUN cd ${LIBMESH_DIR}/examples/adaptivity/ex1/ && make 
-
-RUN cp -r ${SOURCE_DIR}/libmesh/vnv/gui ${SOFTWARE_DIR}/libmesh/gui
-RUN ${VNV_REGISTER} gui libmesh ${SOFTWARE_DIR}/libmesh/gui/vnv.__registration__
 RUN rm -r ${SOURCE_DIR}/libmesh
 
 
