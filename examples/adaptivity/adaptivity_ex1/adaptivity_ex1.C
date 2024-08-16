@@ -71,7 +71,7 @@ int main(int argc, char ** argv)
   // finalized.
   LibMeshInit init (argc, argv);
   
-  INJECTION_INITIALIZE(VNV_APP_NAME,&argc,&argv,"vnv.json");
+  INJECTION_INITIALIZE(VNV_APP_NAME,&argc,&argv);
 
   // This example requires a linear solver package.
   libmesh_example_requires(libMesh::default_solver_package() != INVALID_SOLVER_PACKAGE,

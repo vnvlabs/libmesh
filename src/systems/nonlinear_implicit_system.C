@@ -166,11 +166,31 @@ void NonlinearImplicitSystem::solve ()
   // Log how long the nonlinear solve takes.
   LOG_SCOPE("solve()", "System"); 
 
-  /**
-   * @title perform nonlinear solve
+ /** Solving the Nonlinear Iplicit System
+   * ------------------------------------
    * 
-   * description. 
-  */
+   * This text is a VnV placeholder. It plots a random graph. This should be
+   * updated with a description of what is happening inside this injection point
+   * and/or test. 
+   * 
+   * .. vnv-chart::
+   * 
+   *    {
+   *       "type" : "line",
+   *       "data" : {
+   *          "labels" : {{as_json(rand_nums(`100`))}},
+   *          "datasets" : [{
+   *             "label": "Random Data",
+   *             "backgroundColor": "rgb(57, 105, 160)",
+   *             "borderColor": "rgb(57, 105, 160)",
+   *             "data": {{as_json(rand_nums(`100`))}}
+   *           }]
+   *       }
+   *       
+   *    }
+   * 
+   **/
+
   INJECTION_LOOP_BEGIN(LIBMESH, VWORLD, PerformNonlinearSolve,VNV_NOCALLBACK, *this);
 
   this->set_solver_parameters();

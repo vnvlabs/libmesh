@@ -399,13 +399,31 @@ extern "C"
   libmesh_petsc_snes_jacobian(SNES snes, Vec x, Mat jac, Mat pc, void * ctx)
   {
     
-    /**
-      * @title Petsc Non Linear Solver
-      *
-      * The Petsc nonlinear solver group
-      *
-      **/
-    INJECTION_LOOP_BEGIN(LIBMESH, VWORLD, PetscNonlinearSolver, VNV_NOCALLBACK, snes,x,jac,pc);
+ /** Evaluating the Jacobian at X
+   * -----------------------------
+   * 
+   * This text is a VnV placeholder. It plots a random graph. This should be
+   * updated with a description of what is happening inside this injection point
+   * and/or test. 
+   * 
+   * .. vnv-chart::
+   * 
+   *    {
+   *       "type" : "line",
+   *       "data" : {
+   *          "labels" : {{as_json(rand_nums(`100`))}},
+   *          "datasets" : [{
+   *             "label": "Random Data",
+   *             "backgroundColor": "rgb(57, 105, 160)",
+   *             "borderColor": "rgb(57, 105, 160)",
+   *             "data": {{as_json(rand_nums(`100`))}}
+   *           }]
+   *       }
+   *       
+   *    }
+   * 
+   **/
+   INJECTION_LOOP_BEGIN(LIBMESH, VWORLD, PetscNonlinearSolver, VNV_NOCALLBACK, snes,x,jac,pc);
     
     LOG_SCOPE("jacobian()", "PetscNonlinearSolver"); 
 
@@ -663,12 +681,30 @@ void PetscNonlinearSolver<T>::init (const char * name)
   // Initialize the data structures if not done so already.
   if (!this->initialized()) 
     {
-      /**
-        * @title Initializing Petsc Nonlinear solver
-        *
-        * Here we are initializing the Petsc Non linear solver
-        *
-        **/
+     /** Initializing the Petsc Nonlinear solver
+       * ---------------------------------------
+       * 
+       * This text is a VnV placeholder. It plots a random graph. This should be
+       * updated with a description of what is happening inside this injection point
+       * and/or test. 
+       * 
+       * .. vnv-chart::
+       * 
+       *    {
+       *       "type" : "line",
+       *       "data" : {
+       *          "labels" : {{as_json(rand_nums(`100`))}},
+       *          "datasets" : [{
+       *             "label": "Random Data",
+       *             "backgroundColor": "rgb(57, 105, 160)",
+       *             "borderColor": "rgb(57, 105, 160)",
+       *             "data": {{as_json(rand_nums(`100`))}}
+       *           }]
+       *       }
+       *       
+       *    }
+       * 
+       **/   
       INJECTION_LOOP_BEGIN(LIBMESH, VWORLD, InitializePetscNLS,VNV_NOCALLBACK, name);
       
 
@@ -837,12 +873,30 @@ PetscNonlinearSolver<T>::solve (SparseMatrix<T> &  pre_in,  // System Preconditi
                                 const unsigned int)
 {
   
-  /**
-    * @title Performing the Non linear solve.
-    *
-    * Here we are performing the nonlinear solve
-    *
-  **/
+ /** Executing the PETSc Nonlinear Solver
+   * ------------------------------------
+   * 
+   * This text is a VnV placeholder. It plots a random graph. This should be
+   * updated with a description of what is happening inside this injection point
+   * and/or test. 
+   * 
+   * .. vnv-chart::
+   * 
+   *    {
+   *       "type" : "line",
+   *       "data" : {
+   *          "labels" : {{as_json(rand_nums(`100`))}},
+   *          "datasets" : [{
+   *             "label": "Random Data",
+   *             "backgroundColor": "rgb(57, 105, 160)",
+   *             "borderColor": "rgb(57, 105, 160)",
+   *             "data": {{as_json(rand_nums(`100`))}}
+   *           }]
+   *       }
+   *       
+   *    }
+   * 
+   **/
   INJECTION_LOOP_BEGIN(LIBMESH, VWORLD, ExecutePetscNLS, VNV_NOCALLBACK, *this, x_in, r_in);
       
   LOG_SCOPE("solve()", "PetscNonlinearSolver"); 
