@@ -9,7 +9,12 @@ include $(LIBMESH_DIR)/Make.common
 
 target     := ./example-$(METHOD)
 
-VNV_PACKAGE = EXAMPLE_$(METHOD)
+CURRENT_DIR := $(notdir $(CURDIR))
+PARENT_DIR := $(notdir $(patsubst %/,%,$(dir $(CURDIR))))
+VNV_PACKAGE := LIBMESH_$(PARENT_DIR)_$(CURRENT_DIR)_$(METHOD)
+VNV_NAME := Libmesh $(PARENT_DIR) example ${CURRENT_DIR}
+VNV_DESC := `sed -n '/<h1>/,/<\/h1>/p' $(PARENT_DIR)_$(CURRENT_DIR).C | sed -n 's/.*<h1>\(.*\)<\/h1>.*/\1/p' | head -n 1 | cut -f2 -d-`
+
 libmesh_CPPFLAGS += -DVNV_APP_NAME=${VNV_PACKAGE}
 
 
@@ -35,11 +40,12 @@ objects		:= $(patsubst %.C, %.$(obj-suffix), $(srcfiles))
 # Target:
 #
 
-all:: vnv-gen
+all:: vnv-gen 
 	${MAKE} $(notdir $(target))
 
+
 # Production rules:  how to make the target - depends on library configuration
-$(notdir $(target)): $(objects)
+$(notdir $(target)): $(objects) vnv-register
 	@echo "Linking "$@"..."
 	@$(libmesh_LIBTOOL) --tag=CXX $(LIBTOOLFLAGS) --mode=link \
 	  $(libmesh_CXX) $(libmesh_CXXFLAGS) $(objects) -o $@ $(libmesh_LIBS) $(libmesh_LDFLAGS) $(EXTERNAL_FLAGS)
@@ -90,6 +96,10 @@ vnv-dummy:
 #Generate a compile commands database by cleaning, then building the example. 
 compile_commands.json: vnv-dummy  
 	bear ${MAKE} $(notdir $(target))
+
+vnv-register:
+	@${VNV_DIR}/bin/register executable "$(VNV_NAME)" ${PWD}/$(notdir ${target}) $(VNV_DESC)  
+
 
 #Generate the VnV File (assumes compile commands.json exists)
 vnv-gen: compile_commands.json
